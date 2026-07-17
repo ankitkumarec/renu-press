@@ -27,127 +27,161 @@ function stripDataUrl(b64: string) {
 }
 
 /**
- * 1) Bill PNG DB me save
- * 2) Public URL banaye
- * 3) Agar WhatsApp Cloud API keys hain → image DIRECT customer pe bhejo
+ * Upload PNG bytes to WhatsApp Cloud media, then send as image message.
+ * More reliable than public link (Meta hosts the file).
  */
+async function sendWhatsAppImageByUpload(opts: {
+  token: string;
+  phoneNumberId: string;
+  to: string;
+  pngBuffer: Buffer;
+  caption: string;
+}): Promise<{ ok: true; messageId?: string } | { ok: false; error: string }> {
+  const form = new FormData();
+  const bytes = new Uint8Array(opts.pngBuffer);
+  const blob = new Blob([bytes], { type: "image/png" });
+  form.append("file", blob, "bill.png");
+  form.append("messaging_product", "whatsapp");
+  form.append("type", "image/png");
+
+  const upRes = await fetch(`https://graph.facebook.com/v21.0/${opts.phoneNumberId}/media`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${opts.token}` },
+    body: form,
+  });
+  const upJson = (await upRes.json().catch(() => ({}))) as {
+    id?: string;
+    error?: { message?: string };
+  };
+
+  if (!upRes.ok || !upJson.id) {
+    return { ok: false, error: upJson.error?.message || `Media upload failed (${upRes.status})` };
+  }
+
+  const msgRes = await fetch(`https://graph.facebook.com/v21.0/${opts.phoneNumberId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${opts.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: opts.to,
+      type: "image",
+      image: {
+        id: upJson.id,
+        caption: opts.caption,
+      },
+    }),
+  });
+  const msgJson = (await msgRes.json().catch(() => ({}))) as {
+    messages?: { id: string }[];
+    error?: { message?: string };
+  };
+
+  if (!msgRes.ok) {
+    return { ok: false, error: msgJson.error?.message || `Send failed (${msgRes.status})` };
+  }
+
+  return { ok: true, messageId: msgJson.messages?.[0]?.id };
+}
+
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session || !isErpRole(session.role)) {
-    return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ ok: false, message: "Unauthorized — pehle ERP login karo" }, { status: 401 });
   }
 
   try {
     const body = schema.parse(await req.json());
     const phone = normalizePhone(body.whatsapp);
     if (phone.length < 12) {
-      return NextResponse.json({ ok: false, message: "Invalid phone" }, { status: 400 });
+      return NextResponse.json({ ok: false, message: "Invalid phone (10 digit mobile chahiye)" }, { status: 400 });
     }
 
     const dataBase64 = stripDataUrl(body.imageBase64);
-    // size guard ~3MB base64
     if (dataBase64.length > 4_000_000) {
       return NextResponse.json({ ok: false, message: "Image too large" }, { status: 400 });
     }
 
-    const row = await prisma.billImage.create({
-      data: {
-        billNo: body.billNo,
-        phone,
-        customerName: body.customerName || null,
-        total: body.total ?? null,
-        dataBase64,
-        mimeType: "image/png",
-      },
-    });
+    const pngBuffer = Buffer.from(dataBase64, "base64");
+
+    // Save for records / public link fallback
+    let rowId: string | null = null;
+    try {
+      const row = await prisma.billImage.create({
+        data: {
+          billNo: body.billNo,
+          phone,
+          customerName: body.customerName || null,
+          total: body.total ?? null,
+          dataBase64,
+          mimeType: "image/png",
+        },
+      });
+      rowId = row.id;
+    } catch (dbErr) {
+      console.error("BillImage save failed (table missing?)", dbErr);
+      // continue — Cloud API upload does not need DB
+    }
 
     const origin =
       process.env.NEXT_PUBLIC_APP_URL ||
       req.headers.get("origin") ||
       "https://renu-press.vercel.app";
-    const base = origin.replace(/\/$/, "");
-    const imageUrl = `${base}/api/public/bill/${row.id}`;
+    const imageUrl = rowId ? `${origin.replace(/\/$/, "")}/api/public/bill/${rowId}` : null;
 
-    await prisma.documentVault.create({
-      data: {
-        title: `Bill ${body.billNo} PNG`,
-        category: "Bills",
-        fileUrl: imageUrl,
-        fileName: `${body.billNo}.png`,
-        relatedTo: JSON.stringify({ billImageId: row.id, phone, total: body.total }),
-      },
-    }).catch(() => null);
+    const token = (process.env.WHATSAPP_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN || "").trim();
+    const phoneNumberId = (process.env.WHATSAPP_PHONE_NUMBER_ID || "").trim();
 
-    // —— WhatsApp Cloud API (official image message) ——
-    const token = process.env.WHATSAPP_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN || "";
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
+    if (!token || !phoneNumberId) {
+      return NextResponse.json({
+        ok: false,
+        mode: "no_api_keys",
+        imageUrl,
+        message:
+          "Server pe WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID nahi milay. Vercel Environment Variables me daalo aur Redeploy karo.",
+      });
+    }
 
-    if (token && phoneNumberId) {
-      const apiRes = await fetch(
-        `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to: phone,
-            type: "image",
-            image: {
-              link: imageUrl,
-              caption: `${body.billNo}${body.total != null ? ` · ₹${body.total}` : ""}`,
-            },
-          }),
-        },
-      );
-      const apiJson = (await apiRes.json().catch(() => ({}))) as {
-        error?: { message?: string };
-        messages?: { id: string }[];
-      };
+    const caption = `RENU PRESS · ${body.billNo}${body.total != null ? ` · ₹${body.total}` : ""}`;
+    const sent = await sendWhatsAppImageByUpload({
+      token,
+      phoneNumberId,
+      to: phone,
+      pngBuffer,
+      caption,
+    });
 
-      if (!apiRes.ok) {
-        console.error("WA Cloud API error", apiJson);
-        return NextResponse.json({
-          ok: true,
-          mode: "link",
-          imageUrl,
-          billImageId: row.id,
-          cloudApiError: apiJson.error?.message || "Cloud API failed",
-          message:
-            "Image save ho gayi. WhatsApp Cloud API fail — neeche se share try karo. " +
-            (apiJson.error?.message || ""),
-        });
-      }
+    if (!sent.ok) {
+      console.error("WA image send error", sent.error);
+      return NextResponse.json({
+        ok: false,
+        mode: "cloud_api_error",
+        imageUrl,
+        cloudApiError: sent.error,
+        message: `WhatsApp image fail: ${sent.error}. Number Meta "To" list me verified hona chahiye.`,
+      });
+    }
 
-      await prisma.auditLog.create({
+    await prisma.auditLog
+      .create({
         data: {
           userId: session.id,
           action: "BILL_WHATSAPP_IMAGE_SENT",
           entity: "BillImage",
-          meta: JSON.stringify({ billNo: body.billNo, phone, waId: apiJson.messages?.[0]?.id }),
+          meta: JSON.stringify({ billNo: body.billNo, phone, waId: sent.messageId }),
         },
-      });
+      })
+      .catch(() => null);
 
-      return NextResponse.json({
-        ok: true,
-        mode: "cloud_api",
-        imageUrl,
-        billImageId: row.id,
-        message: "✓ Bill PNG customer ke WhatsApp pe bhej di gayi (Cloud API).",
-      });
-    }
-
-    // No Cloud API keys — return public image for client share
     return NextResponse.json({
       ok: true,
-      mode: "share",
+      mode: "cloud_api",
       imageUrl,
-      billImageId: row.id,
-      message:
-        "PNG ready. Ab share sheet se WhatsApp choose karo — image jayegi. Cloud API keys nahi hain (auto-send ke liye WHATSAPP_ACCESS_TOKEN set karo).",
+      billImageId: rowId,
+      message: "✓ Bill PNG image WhatsApp pe bhej di gayi. Chat me Meta test number se check karo.",
     });
   } catch (e) {
     console.error(e);

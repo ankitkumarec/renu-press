@@ -234,44 +234,49 @@ export function BillGenerator({
         cloudApiError?: string;
       };
 
-      if (!res.ok || !data.ok) {
-        throw new Error(data.message || "Server pe bill save fail");
-      }
-
       setLastImageUrl(data.imageUrl || null);
 
-      // —— SUCCESS: Cloud API ne image bhej di ——
-      if (data.mode === "cloud_api") {
+      // —— SUCCESS: Cloud API ne IMAGE bhej di (browser me WA page nahi khulega) ——
+      if (res.ok && data.ok && data.mode === "cloud_api") {
         setSentOk(true);
-        setWaStatus(data.message || "✓ Bill PNG WhatsApp pe bhej di!");
+        setWaStatus(
+          data.message ||
+            "✓ Bill IMAGE WhatsApp pe chali gayi. Apne phone pe +1 555… / business chat check karo — text nahi, PNG image.",
+        );
         return;
       }
 
-      // —— Share sheet: ONLY the PNG file (no long text) ——
+      // API fail — clear error, NEVER open api.whatsapp.com text page
+      const errMsg =
+        data.message ||
+        data.cloudApiError ||
+        (res.status === 401 ? "ERP login expire — dubara login karo" : "WhatsApp image send fail");
+
+      setSentOk(false);
+      setWaStatus(`✗ ${errMsg}`);
+
+      // Optional: share sheet only if user wants (no automatic browser WA redirect)
       const nav = navigator as Navigator & {
         canShare?: (d: ShareData) => boolean;
         share?: (d: ShareData) => Promise<void>;
       };
-
       if (typeof nav.canShare === "function" && nav.canShare({ files: [file] }) && nav.share) {
-        try {
-          await nav.share({ files: [file] });
-          setSentOk(true);
-          setWaStatus("✓ Share se WhatsApp choose kiya — PNG image chali. Text message nahi.");
-          return;
-        } catch (err) {
-          if (err instanceof Error && /Abort|cancel/i.test(err.name + err.message)) {
-            setWaStatus("Share cancel — neeche image drag karke WhatsApp Web pe chhodo.");
+        const tryShare = window.confirm(
+          `Cloud API se image nahi gayi:\n${errMsg}\n\nShare sheet se WhatsApp try karein?`,
+        );
+        if (tryShare) {
+          try {
+            await nav.share({ files: [file] });
+            setSentOk(true);
+            setWaStatus("✓ Share se PNG bheji.");
             return;
+          } catch {
+            /* cancel */
           }
         }
       }
 
-      // —— Last working path without download: open share-friendly status ——
-      setWaStatus(
-        data.message ||
-          "PNG ready. Niche preview image ko WhatsApp Web chat pe DRAG & DROP karo — image seedha chat me chali jayegi.",
-      );
+      alert(`WhatsApp image fail:\n${errMsg}`);
     } catch (e) {
       console.error(e);
       setWaStatus(e instanceof Error ? e.message : "Fail");
