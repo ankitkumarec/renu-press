@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { SiteSettings } from "@prisma/client";
+import { WA_CONTACTS, formatInPhone, waChatUrl } from "@/lib/contacts";
 
 export function Footer({ settings }: { settings: SiteSettings }) {
   return (
@@ -26,11 +27,22 @@ export function Footer({ settings }: { settings: SiteSettings }) {
             <br />
             {settings.city}, {settings.state} {settings.pincode}
           </p>
-          <div className="mt-4 space-y-1 text-sm">
-            <a href={`tel:${settings.phone.replace(/\s/g, "")}`} className="block font-semibold text-cyan-300 hover:text-cyan-200">
-              {settings.phone}
-            </a>
-            <a href={`mailto:${settings.email}`} className="block text-slate-400 hover:text-white">
+          <div className="mt-4 space-y-2 text-sm">
+            <div className="text-[10px] font-bold tracking-[0.16em] text-slate-500 uppercase">WhatsApp / Call</div>
+            {WA_CONTACTS.map((c) => (
+              <a
+                key={c.number}
+                href={waChatUrl(c.number)}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 font-semibold text-cyan-300 transition hover:text-emerald-300"
+              >
+                <span className="text-[10px] font-bold text-emerald-400/90">WA</span>
+                {formatInPhone(c.number)}
+                {c.primary ? <span className="text-[10px] text-slate-500">(main chat)</span> : null}
+              </a>
+            ))}
+            <a href={`mailto:${settings.email}`} className="mt-1 block text-slate-400 hover:text-white">
               {settings.email}
             </a>
           </div>
@@ -80,7 +92,7 @@ export function Footer({ settings }: { settings: SiteSettings }) {
             <div className="text-[11px] font-bold tracking-[0.18em] text-white/70 uppercase">Hours</div>
             <p className="mt-3 text-sm leading-relaxed text-slate-300">{settings.businessHours}</p>
             <a
-              href={`https://wa.me/${settings.whatsapp}`}
+              href={waChatUrl(settings.whatsapp || "917631425111")}
               target="_blank"
               rel="noreferrer"
               className="mt-5 inline-flex rounded-full bg-[#25D366] px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-500/30 transition hover:scale-105"

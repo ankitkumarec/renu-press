@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getSettings } from "@/lib/site";
 import { ContactForm } from "@/components/forms/ContactForm";
+import { WA_CONTACTS, formatInPhone, waChatUrl } from "@/lib/contacts";
 
 export const metadata: Metadata = { title: "Contact" };
 
@@ -17,12 +18,30 @@ export default async function ContactPage() {
               <span className="block text-[11px] font-semibold tracking-[0.14em] text-[var(--color-ink)] uppercase">Address</span>
               {s.address}
             </p>
-            <p>
-              <span className="block text-[11px] font-semibold tracking-[0.14em] text-[var(--color-ink)] uppercase">Phone</span>
-              <a href={`tel:${s.phone.replace(/\s/g, "")}`} className="text-[var(--color-ink)]">
-                {s.phone}
-              </a>
-            </p>
+            <div>
+              <span className="block text-[11px] font-semibold tracking-[0.14em] text-[var(--color-ink)] uppercase">
+                WhatsApp chat
+              </span>
+              <p className="mt-1 text-xs text-slate-500">Number pe click → WhatsApp message open</p>
+              <ul className="mt-3 space-y-2">
+                {WA_CONTACTS.map((c) => (
+                  <li key={c.number}>
+                    <a
+                      href={waChatUrl(c.number)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-500/20"
+                    >
+                      <span className="grid h-6 w-6 place-items-center rounded-full bg-[#25D366] text-[10px] font-black text-white">
+                        WA
+                      </span>
+                      {formatInPhone(c.number)}
+                      {c.primary ? <span className="text-[10px] font-bold text-emerald-600">MAIN</span> : null}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
             <p>
               <span className="block text-[11px] font-semibold tracking-[0.14em] text-[var(--color-ink)] uppercase">Email</span>
               <a href={`mailto:${s.email}`} className="text-[var(--color-ink)]">

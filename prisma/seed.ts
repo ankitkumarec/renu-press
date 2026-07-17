@@ -128,8 +128,15 @@ function slugify(s: string) {
 async function main() {
   await prisma.siteSettings.upsert({
     where: { id: "main" },
-    update: {},
-    create: { id: "main" },
+    update: {
+      phone: "+91 76314 25111",
+      whatsapp: "917631425111",
+    },
+    create: {
+      id: "main",
+      phone: "+91 76314 25111",
+      whatsapp: "917631425111",
+    },
   });
 
   const adminPass = await bcrypt.hash("Renu@Admin2026", 12);
