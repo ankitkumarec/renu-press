@@ -396,9 +396,12 @@ export function BillGenerator({
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] py-3 text-sm font-bold text-white disabled:opacity-60"
           >
             {waBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-            WhatsApp pe image bhejo
+            v5 · Cloud se PNG image bhejo
           </button>
         </div>
+        <p className="text-center text-[10px] font-bold text-emerald-400/90">
+          Agar ab bhi api.whatsapp.com page khule → Ctrl+Shift+R (purana cache). Naya button text: &quot;v5 · Cloud se PNG&quot;
+        </p>
 
         {waStatus ? (
           <div
