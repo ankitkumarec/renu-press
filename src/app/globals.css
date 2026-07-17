@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --color-navy: #0a1628;
+  --color-navy-2: #12203a;
+  --color-ink: #0c1222;
+  --color-paper: #f8fafc;
+  --color-orange: #f97316;
+  --color-orange-deep: #ea580c;
+  --color-royal: #2563eb;
+  --color-purple: #7c3aed;
+  --color-cyan: #06b6d4;
+  --color-magenta: #d946ef;
+  --color-gold: #fbbf24;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #070d1a;
+  color: #e2e8f0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in oklab, #f97316 45%, white);
+  color: #0a1628;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.035em;
+}
+
+.container-rp {
+  width: min(1200px, calc(100% - 1.5rem));
+  margin-inline: auto;
+}
+
+.container-wide {
+  width: min(1320px, calc(100% - 1.5rem));
+  margin-inline: auto;
+}
+
+/* Gradients */
+.grad-brand {
+  background: linear-gradient(135deg, #f97316 0%, #ef4444 35%, #a855f7 70%, #2563eb 100%);
+}
+
+.grad-text {
+  background: linear-gradient(110deg, #fb923c 0%, #f472b6 30%, #a78bfa 55%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.grad-orange {
+  background: linear-gradient(135deg, #fb923c, #ea580c 55%, #c026d3);
+}
+
+.grad-blue {
+  background: linear-gradient(135deg, #38bdf8, #2563eb 50%, #7c3aed);
+}
+
+.grad-purple {
+  background: linear-gradient(135deg, #c084fc, #7c3aed 50%, #db2777);
+}
+
+.grad-cyan {
+  background: linear-gradient(135deg, #22d3ee, #2563eb);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-strong {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(20px);
+}
+
+.card-glow {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 20px 50px -20px rgba(37, 99, 235, 0.45),
+    0 10px 30px -15px rgba(249, 115, 22, 0.35);
+}
+
+.mesh-bg {
+  background-color: #070d1a;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(249, 115, 22, 0.28), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 10%, rgba(37, 99, 235, 0.35), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(124, 58, 237, 0.3), transparent 55%),
+    radial-gradient(ellipse 40% 30% at 70% 50%, rgba(6, 182, 212, 0.12), transparent 50%);
+}
+
+.section-light {
+  background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 40%, #dbeafe 100%);
+  color: #0f172a;
+}
+
+.section-navy {
+  background: linear-gradient(165deg, #0a1628 0%, #12203a 45%, #1e1b4b 100%);
+}
+
+.section-sunset {
+  background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 35%, #9a3412 100%);
+}
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.55;
+  pointer-events: none;
+  animation: floaty 10s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(12px, -18px) scale(1.06);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 32s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.shimmer-border {
+  background: linear-gradient(90deg, #f97316, #a855f7, #2563eb, #06b6d4, #f97316);
+  background-size: 300% 100%;
+  animation: shimmer 6s linear infinite;
+}
+
+.hover-lift {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-8px) scale(1.01);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0a1628;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(#f97316, #7c3aed);
+  border-radius: 999px;
+}

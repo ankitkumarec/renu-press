@@ -1,0 +1,431 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String?  @unique
+  phone        String?  @unique
+  passwordHash String?
+  name         String
+  role String @default("CUSTOMER")
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customerProfile CustomerProfile?
+  employeeProfile EmployeeProfile?
+  orders          Order[]           @relation("CustomerOrders")
+  assignedOrders  Order[]           @relation("AssignedOrders")
+  tickets         SupportTicket[]
+  quotes          Quote[]
+  addresses       Address[]
+  wishlist        WishlistItem[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+}
+
+model CustomerProfile {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName  String?
+  gstNumber    String?
+  walletBalance Float  @default(0)
+  rewardPoints Int     @default(0)
+}
+
+model EmployeeProfile {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department String?
+  designation String?
+  salary     Float?
+  joinDate   DateTime?
+}
+
+model Address {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String  @default("Home")
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  pincode   String
+  isDefault Boolean @default(false)
+}
+
+model SiteSettings {
+  id              String  @id @default("main")
+  businessName    String  @default("RENU PRESS")
+  tagline         String  @default("Printing & Branding Solutions")
+  experienceYears Int     @default(12)
+  phone           String  @default("+91 98765 43210")
+  whatsapp        String  @default("919876543210")
+  email           String  @default("hello@renupress.in")
+  address         String  @default("Near Bus Stand, Saharsa, Bihar 852201")
+  city            String  @default("Saharsa")
+  state           String  @default("Bihar")
+  pincode         String  @default("852201")
+  gst             String  @default("10XXXXX1234X1Z5")
+  businessHours   String  @default("Mon-Sat: 9:00 AM - 8:00 PM | Sunday: Closed")
+  mapsEmbedUrl    String  @default("https://maps.google.com/maps?q=Saharsa+Bihar&output=embed")
+  mapsLink        String  @default("https://maps.google.com/?q=Saharsa,+Bihar")
+  facebook        String  @default("")
+  instagram       String  @default("")
+  youtube         String  @default("")
+  linkedin        String  @default("")
+  heroTitle       String  @default("Print that carries your name with pride.")
+  heroSubtitle    String  @default("From wedding cards to corporate branding — RENU PRESS delivers precision printing across Saharsa and Bihar.")
+  aboutTitle      String  @default("Crafted in Saharsa. Trusted across Bihar.")
+  aboutBody       String  @default("RENU PRESS is a full-service printing and branding house based in Saharsa. We combine traditional press craft with modern digital production — serving shops, schools, offices, political campaigns, and families who need work that looks finished.")
+  storyBody       String  @default("What started as a neighbourhood press has grown into a complete production floor: offset, digital, outdoor media, apparel, gifts, and signage. Our team still proof-reads every invitation and checks every colour before it leaves the shop.")
+  seoTitle        String  @default("RENU PRESS | Printing & Branding Solutions in Saharsa, Bihar")
+  seoDescription  String  @default("Offset, digital, flex, wedding cards, ID cards, corporate branding and more. RENU PRESS — Saharsa's complete printing partner.")
+  gaId            String  @default("")
+  popupEnabled    Boolean @default(false)
+  popupTitle      String  @default("Need a quote today?")
+  popupBody       String  @default("Send your size and quantity on WhatsApp — we reply during business hours.")
+  maintenance     Boolean @default(false)
+  updatedAt       DateTime @updatedAt
+}
+
+model ServiceCategory {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  sortOrder Int       @default(0)
+  isActive  Boolean   @default(true)
+  services  Service[]
+}
+
+model Service {
+  id          String          @id @default(cuid())
+  name        String
+  slug        String          @unique
+  description String
+  categoryId  String
+  category    ServiceCategory @relation(fields: [categoryId], references: [id])
+  imageUrl    String?
+  isFeatured  Boolean         @default(false)
+  isActive    Boolean         @default(true)
+  sortOrder   Int             @default(0)
+  basePrice   Float?
+  unit        String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  products    Product[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id])
+  sizes       String   @default("[]")
+  materials   String   @default("[]")
+  finishings  String   @default("[]")
+  minQty      Int      @default(1)
+  basePrice   Float    @default(0)
+  isActive    Boolean  @default(true)
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  orders      Order[]
+  wishlist    WishlistItem[]
+}
+
+model PortfolioItem {
+  id          String   @id @default(cuid())
+  title       String
+  client      String?
+  category    String
+  description String
+  imageUrl    String
+  beforeUrl   String?
+  afterUrl    String?
+  isFeatured  Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model GalleryImage {
+  id        String   @id @default(cuid())
+  title     String
+  imageUrl  String
+  album     String   @default("General")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  role      String?
+  company   String?
+  body      String
+  rating    Int      @default(5)
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Faq {
+  id        String  @id @default(cuid())
+  question  String
+  answer    String
+  category  String  @default("General")
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+}
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String
+  body        String
+  coverUrl    String?
+  published   Boolean  @default(false)
+  seoTitle    String?
+  seoDesc     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Page {
+  id        String  @id @default(cuid())
+  title     String
+  slug      String  @unique
+  body      String
+  published Boolean @default(true)
+  seoTitle  String?
+  seoDesc   String?
+}
+
+model Slider {
+  id        String  @id @default(cuid())
+  title     String
+  subtitle  String?
+  imageUrl  String
+  ctaLabel  String?
+  ctaHref   String?
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+}
+
+model ProcessStep {
+  id        String @id @default(cuid())
+  title     String
+  body      String
+  sortOrder Int    @default(0)
+}
+
+model WhyChoose {
+  id        String @id @default(cuid())
+  title     String
+  body      String
+  icon      String @default("check")
+  sortOrder Int    @default(0)
+}
+
+model Industry {
+  id        String @id @default(cuid())
+  name      String
+  body      String
+  sortOrder Int    @default(0)
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  service   String?
+  message   String
+  source    String   @default("website")
+  status    String   @default("new")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Quote {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  name        String
+  phone       String
+  email       String?
+  service     String
+  size        String?
+  material    String?
+  quantity    Int      @default(1)
+  finishing   String?
+  notes       String?
+  artworkUrl  String?
+  estimate    Float?
+  status      String   @default("requested")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
+  customerId      String
+  customer        User          @relation("CustomerOrders", fields: [customerId], references: [id])
+  assignedToId    String?
+  assignedTo      User?         @relation("AssignedOrders", fields: [assignedToId], references: [id])
+  productId       String?
+  product         Product?      @relation(fields: [productId], references: [id])
+  serviceName     String
+  size            String?
+  material        String?
+  quantity        Int           @default(1)
+  finishing       String?
+  artworkUrl      String?
+  notes           String?
+  status String @default("PENDING")
+  subtotal        Float         @default(0)
+  tax             Float         @default(0)
+  total           Float         @default(0)
+  advancePaid     Float         @default(0)
+  paymentStatus String @default("UNPAID")
+  trackingCode    String?
+  deliveryAddress String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  payments        Payment[]
+  statusHistory   OrderStatusLog[]
+  invoice         Invoice?
+}
+
+model OrderStatusLog {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status String
+  note      String?
+  createdAt DateTime    @default(now())
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  orderId       String   @unique
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount        Float
+  tax           Float    @default(0)
+  total         Float
+  issuedAt      DateTime @default(now())
+  dueAt         DateTime?
+  pdfUrl        String?
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  orderId   String
+  order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount    Float
+  method String
+  reference String?
+  status    String        @default("success")
+  paidAt    DateTime      @default(now())
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  subject   String
+  body      String
+  status    String   @default("open")
+  priority  String   @default("normal")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WishlistItem {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  name         String
+  sku          String?  @unique
+  category     String
+  unit         String   @default("pcs")
+  quantity     Float    @default(0)
+  reorderLevel Float    @default(10)
+  unitCost     Float    @default(0)
+  supplier     String?
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  title       String
+  category    String
+  amount      Float
+  paidVia     String   @default("CASH")
+  note        String?
+  spentAt     DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String?
+  meta      String?
+  createdAt DateTime @default(now())
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model CareerJob {
+  id          String   @id @default(cuid())
+  title       String
+  department  String
+  location    String   @default("Saharsa, Bihar")
+  type        String   @default("Full-time")
+  description String
+  isOpen      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
