@@ -15,7 +15,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "postinstall": "prisma generate",
-    "vercel-build": "node -e \"const fs=require('fs'); fs.copyFileSync('.env.production','.env'); const t=fs.readFileSync('.env','utf8'); console.log('WA keys in build env:', /WHATSAPP_ACCESS_TOKEN=/.test(t), /WHATSAPP_PHONE_NUMBER_ID=/.test(t));\" && prisma generate && (prisma db push || node scripts/migrate-bill-image.js || true) && (tsx prisma/seed.ts || true) && next build"
+    "vercel-build": "node -e \"require('fs').copyFileSync('.env.production','.env'); console.log('env ready');\" && prisma generate && next build"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
