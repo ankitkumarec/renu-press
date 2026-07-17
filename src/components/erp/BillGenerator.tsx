@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { FileImage, MessageCircle, Download, Plus, Trash2 } from "lucide-react";
+import { FileImage, Download, Plus, Trash2, ImagePlus, Loader2 } from "lucide-react";
 
 type Line = { name: string; qty: number; rate: number };
 
@@ -11,6 +11,31 @@ function nextBillNo() {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const r = String(Math.floor(1000 + Math.random() * 9000));
   return `RP-${y}${m}-${r}`;
+}
+
+function canvasToPngFile(canvas: HTMLCanvasElement, fileName: string): Promise<File> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("PNG ban nahi paya"));
+          return;
+        }
+        resolve(new File([blob], fileName, { type: "image/png" }));
+      },
+      "image/png",
+      1,
+    );
+  });
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 export function BillGenerator({
@@ -30,6 +55,8 @@ export function BillGenerator({
   const [note, setNote] = useState("Thank you for choosing RENU PRESS.");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [gstPct, setGstPct] = useState(18);
+  const [waBusy, setWaBusy] = useState(false);
+  const [waStatus, setWaStatus] = useState<string | null>(null);
 
   const subtotal = lines.reduce((s, l) => s + l.qty * l.rate, 0);
   const gst = Math.round((subtotal * gstPct) / 100);
@@ -153,25 +180,22 @@ export function BillGenerator({
   }
 
   function downloadPng() {
-    if (!previewUrl) return;
-    const a = document.createElement("a");
-    a.href = previewUrl;
-    a.download = `${billNo}.png`;
-    a.click();
+    drawBill();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      downloadBlob(blob, `${billNo}.png`);
+      setWaStatus(`PNG download: ${billNo}.png`);
+    }, "image/png");
   }
 
-  function openWhatsApp() {
-    const digits = whatsapp.replace(/\D/g, "");
-    if (digits.length < 10) {
-      alert("WhatsApp number sahi daalo (10 digit, country code 91 optional)");
-      return;
-    }
-    const phoneWa = digits.length === 10 ? `91${digits}` : digits;
+  function buildWaText(includeAttachHint: boolean) {
     const itemLines = lines.map((l, i) => `${i + 1}. ${l.name} x${l.qty} = ₹${l.qty * l.rate}`).join("\n");
-    const text = [
+    const parts = [
       `*${businessName}* — Bill`,
       `Bill No: ${billNo}`,
-      `Customer: ${customerName}`,
+      `Customer: ${customerName || "—"}`,
       ``,
       itemLines,
       ``,
@@ -180,18 +204,89 @@ export function BillGenerator({
       `*Total: ₹${total}*`,
       ``,
       note,
-      ``,
-      `(Bill PNG apne phone se attach karke bhej sakte hain — pehle Download PNG.)`,
-    ].join("\n");
-
-    // Official deep link — opens WhatsApp chat; image must be attached by user (WA Web/App policy)
-    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(text)}`, "_blank");
+    ];
+    if (includeAttachHint) {
+      parts.push(``, `📎 Bill PNG bhi saath attach hai / downloads me save: *${billNo}.png*`);
+    }
+    return parts.join("\n");
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    drawBill();
-    // Persist bill meta for records
+  /**
+   * WhatsApp pe text + PNG:
+   * 1) Web Share API (mobile/desktop where supported) — PNG file + caption share sheet se WhatsApp
+   * 2) Fallback: PNG auto-download + WhatsApp chat open with caption (📎 se PNG attach)
+   */
+  async function openWhatsApp() {
+    const digits = whatsapp.replace(/\D/g, "");
+    if (digits.length < 10) {
+      alert("WhatsApp number sahi daalo (10 digit, country code 91 optional)");
+      return;
+    }
+    const phoneWa = digits.length === 10 ? `91${digits}` : digits;
+
+    setWaBusy(true);
+    setWaStatus(null);
+    try {
+      drawBill();
+      // Allow canvas paint to flush
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      const canvas = canvasRef.current;
+      if (!canvas) throw new Error("Bill preview ready nahi");
+
+      const fileName = `${billNo}.png`;
+      const file = await canvasToPngFile(canvas, fileName);
+      const textWithPng = buildWaText(true);
+      const textShort = buildWaText(false);
+
+      // —— 1) Native share with PNG file (best: image actually goes with share) ——
+      const nav = navigator as Navigator & {
+        canShare?: (data: ShareData) => boolean;
+        share?: (data: ShareData) => Promise<void>;
+      };
+      const shareData: ShareData = {
+        files: [file],
+        title: `${businessName} Bill ${billNo}`,
+        text: textShort,
+      };
+
+      if (typeof nav.canShare === "function" && nav.canShare({ files: [file] }) && typeof nav.share === "function") {
+        try {
+          await nav.share(shareData);
+          setWaStatus("✓ Share sheet open — WhatsApp choose karo. PNG + message dono jayenge.");
+          // Still save bill record
+          await persistBill();
+          return;
+        } catch (err) {
+          // User cancelled share — don't force WA open
+          if (err instanceof Error && /Abort|cancel/i.test(err.name + err.message)) {
+            setWaStatus("Share cancel hua. Dobara try karo ya Download PNG use karo.");
+            return;
+          }
+        }
+      }
+
+      // —— 2) Fallback: force PNG download THEN open WhatsApp with caption ——
+      downloadBlob(file, fileName);
+      setWaStatus(
+        `✓ PNG download ho gayi: ${fileName}. WhatsApp khul raha hai — chat me 📎 Attach se ye PNG select karke Send karo.`,
+      );
+
+      // Small delay so download starts before tab switch
+      await new Promise((r) => setTimeout(r, 400));
+      window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(textWithPng)}`, "_blank", "noopener,noreferrer");
+
+      await persistBill();
+    } catch (e) {
+      console.error(e);
+      setWaStatus("PNG/WhatsApp me issue — pehle Download PNG dabao, phir WhatsApp pe bhejo.");
+      alert(e instanceof Error ? e.message : "WhatsApp send fail");
+    } finally {
+      setWaBusy(false);
+    }
+  }
+
+  async function persistBill() {
     await fetch("/api/erp/bills", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -206,6 +301,12 @@ export function BillGenerator({
         note,
       }),
     }).catch(() => null);
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    drawBill();
+    await persistBill();
   }
 
   const field =
@@ -304,19 +405,27 @@ export function BillGenerator({
             onClick={downloadPng}
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/15 py-3 text-sm font-bold"
           >
-            <Download className="h-4 w-4" /> Download PNG
+            <Download className="h-4 w-4" /> Sirf PNG
           </button>
           <button
             type="button"
-            onClick={openWhatsApp}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] py-3 text-sm font-bold text-white"
+            disabled={waBusy}
+            onClick={() => void openWhatsApp()}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] py-3 text-sm font-bold text-white disabled:opacity-60"
           >
-            <MessageCircle className="h-4 w-4" /> WhatsApp pe bhejo
+            {waBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+            PNG + WhatsApp
           </button>
         </div>
+        {waStatus ? (
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs leading-relaxed text-emerald-100">
+            {waStatus}
+          </div>
+        ) : null}
         <p className="text-[10px] leading-relaxed text-slate-500">
-          WhatsApp official policy: deep link se chat + text open hota hai. PNG pehle Download karke chat me attach
-          karein. Auto-blast/bulk spam allowed nahi — dekhne niche note.
+          <strong className="text-slate-400">PNG + WhatsApp</strong> pehle bill image banata hai, phir:
+          <br />• Phone/Chrome: share sheet se WhatsApp — <em>message + PNG dono</em>
+          <br />• PC: PNG auto-download + chat open — 📎 se wahi PNG attach karke Send
         </p>
       </form>
 
