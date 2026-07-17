@@ -30,6 +30,7 @@ const NAV = [
   { href: "/erp/production", label: "Production", icon: Factory },
   { href: "/erp/inventory", label: "Inventory", icon: Package },
   { href: "/erp/expenses", label: "Expenses", icon: Wallet },
+  { href: "/erp/bills", label: "WhatsApp Bills", icon: FileStack },
   { href: "/erp/purchase", label: "Purchase", icon: Truck },
   { href: "/erp/suppliers", label: "Suppliers", icon: Building2 },
   { href: "/erp/crm", label: "CRM", icon: Contact },

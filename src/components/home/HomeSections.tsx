@@ -330,8 +330,8 @@ export function TeamAwardsStrip() {
       gradient: "from-orange-500 to-rose-600",
     },
     {
-      name: "Om",
-      nameHi: "ओम",
+      name: "Om Kumar",
+      nameHi: "ओम कुमार",
       role: "Operations Head · Management",
       roleHi: "ऑपरेशन्स हेड · समस्त संचालन",
       bio: "Daily production, delivery timelines, staff coordination aur har order ko shop floor se customer tak sambhalte hain.",

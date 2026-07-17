@@ -437,7 +437,7 @@ async function main() {
     create: {
       email: "staff@renupress.in",
       phone: "9988776655",
-      name: "Om",
+      name: "Om Kumar",
       passwordHash: staffPass,
       role: "EMPLOYEE",
       employeeProfile: {
@@ -449,6 +449,11 @@ async function main() {
         },
       },
     },
+  });
+  // Keep name in sync if user already existed
+  await prisma.user.update({
+    where: { email: "staff@renupress.in" },
+    data: { name: "Om Kumar" },
   });
 
   const supplier = await prisma.supplier.upsert({
