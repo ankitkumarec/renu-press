@@ -23,8 +23,11 @@ export async function POST(req: Request) {
         id: result.message.id,
         role: result.message.role,
         content: result.message.content,
+        messageType: result.message.messageType,
+        metadata: result.message.metadata,
         createdAt: result.message.createdAt,
       },
+      recommendation: result.recommendation,
       sessionId: result.sessionId,
     });
   } catch (e) {

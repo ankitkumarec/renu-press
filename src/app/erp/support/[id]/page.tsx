@@ -119,13 +119,27 @@ export default async function ErpSupportDetailPage({
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-[#0c1220] p-5">
-            <h2 className="text-sm font-bold text-white">AI summary</h2>
-            <pre className="mt-2 whitespace-pre-wrap font-sans text-xs leading-relaxed text-slate-300">
+            <h2 className="text-sm font-bold text-white">Consultant summary</h2>
+            <dl className="mt-2 space-y-1.5 text-xs">
+              <div className="flex gap-2">
+                <dt className="w-20 text-slate-500">Intent</dt>
+                <dd className="text-cyan-200">{conv.customerIntent || "—"}</dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-20 text-slate-500">Category</dt>
+                <dd className="text-slate-200">{conv.interestedCategory || "—"}</dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-20 text-slate-500">Bundle</dt>
+                <dd className="text-violet-200">{conv.suggestedBundle || "—"}</dd>
+              </div>
+            </dl>
+            <pre className="mt-3 whitespace-pre-wrap font-sans text-xs leading-relaxed text-slate-300">
               {conv.aiSummary || "Summary after handover."}
             </pre>
             {rec.length ? (
               <div className="mt-3">
-                <div className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">Recommended</div>
+                <div className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">Recommended products</div>
                 <ul className="mt-1 list-inside list-disc text-xs text-violet-300">
                   {rec.map((r) => (
                     <li key={r}>{r}</li>

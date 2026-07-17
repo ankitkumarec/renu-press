@@ -18,6 +18,7 @@ import {
   Smile,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseRecMetadata, ProductCards } from "./ProductCards";
 
 type Msg = {
   id: string;
@@ -123,7 +124,8 @@ export function SupportDeskWidget({
             id: data.message.id,
             role: "agent",
             content: data.reply,
-            messageType: "text",
+            messageType: data.message.messageType || "text",
+            metadata: data.message.metadata || (data.recommendation ? JSON.stringify(data.recommendation) : null),
             createdAt: data.message.createdAt,
           },
         ]);
@@ -181,7 +183,8 @@ export function SupportDeskWidget({
             id: `ar_${Date.now()}`,
             role: "agent",
             content: data.reply,
-            messageType: "text",
+            messageType: data.recommendation ? "recommendations" : "text",
+            metadata: data.recommendation ? JSON.stringify(data.recommendation) : null,
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -321,6 +324,7 @@ export function SupportDeskWidget({
               {messages.map((m) => {
                 const mine = m.role === "customer";
                 const system = m.role === "system" || m.role === "admin";
+                const rec = !mine ? parseRecMetadata(m.metadata) : null;
                 return (
                   <motion.div
                     key={m.id}
@@ -330,13 +334,14 @@ export function SupportDeskWidget({
                   >
                     <div
                       className={cn(
-                        "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap shadow-sm",
+                        "max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm",
+                        rec ? "sm:max-w-[100%]" : "whitespace-pre-wrap",
                         mine
-                          ? "rounded-br-md bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white"
+                          ? "rounded-br-md bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white whitespace-pre-wrap"
                           : system
                             ? dark
-                              ? "border border-amber-500/30 bg-amber-500/10 text-amber-100"
-                              : "border border-amber-200 bg-amber-50 text-amber-900"
+                              ? "border border-amber-500/30 bg-amber-500/10 text-amber-100 whitespace-pre-wrap"
+                              : "border border-amber-200 bg-amber-50 text-amber-900 whitespace-pre-wrap"
                             : dark
                               ? "rounded-bl-md border border-white/10 bg-white/8 text-slate-100"
                               : "rounded-bl-md border border-slate-200 bg-white text-slate-800",
@@ -344,7 +349,7 @@ export function SupportDeskWidget({
                     >
                       {!mine && !system ? (
                         <div className={cn("mb-1 text-[10px] font-bold tracking-wide uppercase", dark ? "text-violet-300" : "text-violet-600")}>
-                          Support Team
+                          Support Team · Visual consultant
                         </div>
                       ) : null}
                       {m.messageType === "file" || m.messageType === "image" ? (
@@ -352,7 +357,20 @@ export function SupportDeskWidget({
                           {m.messageType === "image" ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
                         </div>
                       ) : null}
-                      {m.content}
+                      {rec ? (
+                        <>
+                          <p className="whitespace-pre-wrap text-[12px] leading-relaxed opacity-95">
+                            {m.content.split("\n").slice(0, 4).join("\n")}
+                          </p>
+                          <ProductCards
+                            data={rec}
+                            dark={dark}
+                            onSelect={(name) => void sendText(name)}
+                          />
+                        </>
+                      ) : (
+                        <span className="whitespace-pre-wrap">{m.content}</span>
+                      )}
                     </div>
                   </motion.div>
                 );

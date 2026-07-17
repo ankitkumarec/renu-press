@@ -6,6 +6,12 @@ import {
   type CollectField,
   welcomeMessage,
 } from "./constants";
+import {
+  buildRecommendations,
+  formatRecommendationText,
+  shouldRunRecommendation,
+  type RecommendationResult,
+} from "./recommend";
 
 export type ConversationState = {
   customerName?: string | null;
@@ -25,6 +31,11 @@ export type ConversationState = {
   collectedFields?: string | null;
   language?: string | null;
   status?: string | null;
+  customerIntent?: string | null;
+  interestedCategory?: string | null;
+  suggestedBundle?: string | null;
+  recommendedProducts?: string | null;
+  recommendationJson?: string | null;
 };
 
 const PRICE_PATTERNS =
@@ -132,6 +143,9 @@ export function computeUrgency(state: ConversationState): string {
 
 export function buildSummary(state: ConversationState, fileNames: string[]): string {
   const lines = [
+    `Intent: ${state.customerIntent || "—"}`,
+    `Category: ${state.interestedCategory || "—"}`,
+    `Bundle: ${state.suggestedBundle || "—"}`,
     `Product: ${state.product || "—"}`,
     `Size: ${state.size || "—"}`,
     `Material: ${state.material || "—"}`,
@@ -145,6 +159,7 @@ export function buildSummary(state: ConversationState, fileNames: string[]): str
     `Address: ${state.deliveryAddress || "—"}`,
     `Budget note: ${state.budget || "—"}`,
     `Remarks: ${state.remarks || "—"}`,
+    `Recommended: ${state.recommendedProducts || "—"}`,
     `Files: ${fileNames.length ? fileNames.join(", ") : "none"}`,
   ];
   return lines.join("\n");
@@ -169,11 +184,17 @@ type AgentResult = {
     urgency?: string;
     aiSummary?: string;
     recommendedProducts?: string;
+    customerIntent?: string;
+    interestedCategory?: string;
+    suggestedBundle?: string;
+    recommendationJson?: string;
     language?: string;
     collectedFields?: string;
     nextField?: string | null;
     readyForHandover?: boolean;
   };
+  recommendation?: RecommendationResult | null;
+  messageType?: string;
 };
 
 function q(field: CollectField, lang: "hi" | "en" | "hinglish") {
@@ -200,7 +221,11 @@ function policyBlock(text: string, lang: "hi" | "en" | "hinglish"): string | nul
 export function processCustomerMessage(
   state: ConversationState,
   rawText: string,
-  opts?: { fileJustUploaded?: boolean; fileReply?: string },
+  opts?: {
+    fileJustUploaded?: boolean;
+    fileReply?: string;
+    forceRecommendation?: RecommendationResult | null;
+  },
 ): AgentResult {
   const text = rawText.trim();
   const lang = detectLanguage(text || state.language || "hinglish");
@@ -210,7 +235,7 @@ export function processCustomerMessage(
 
   if (opts?.fileReply) replies.push(opts.fileReply);
 
-  if (!text && !opts?.fileJustUploaded) {
+  if (!text && !opts?.fileJustUploaded && !opts?.forceRecommendation) {
     return {
       reply: lang === "en" ? "Please share a short message or upload a file." : "Kripya message likhein ya file upload karein.",
       patch,
@@ -220,12 +245,63 @@ export function processCustomerMessage(
   // Policy intercept
   if (text) {
     const block = policyBlock(text, lang);
-    if (block && !matchProduct(text) && !extractPhone(text)) {
+    if (block && !matchProduct(text) && !extractPhone(text) && !shouldRunRecommendation(text)) {
       const nf = nextMissingField(state) || (state.nextField as CollectField) || "product";
       replies.push(block);
       replies.push(q(nf, lang));
       patch.nextField = nf;
       return { reply: replies.join("\n\n"), patch };
+    }
+  }
+
+  // —— Visual sales consultant: package / intent recommendations ——
+  const rec =
+    opts?.forceRecommendation ||
+    (text && (shouldRunRecommendation(text) || !isFilled(state.product))
+      ? buildRecommendations(text, lang)
+      : null);
+
+  if (rec && rec.products.length >= 2 && (opts?.forceRecommendation || shouldRunRecommendation(text) || !isFilled(state.product))) {
+    const primary = rec.products[0]?.name;
+    if (primary && !isFilled(state.product)) {
+      patch.product = primary;
+      // Don't mark product fully collected — user may refine choice
+    }
+    if (/full\s*package|complete\s*package|saara|sab\s*chahiye/i.test(text)) {
+      patch.product = rec.suggestedBundle || rec.products.map((p) => p.name).slice(0, 5).join(" + ");
+      collected.product = true;
+    } else if (matchProduct(text) && text.length < 60 && !shouldRunRecommendation(text)) {
+      // exact single product pick — fall through
+    } else {
+      patch.customerIntent = rec.intent.businessType || rec.interestedCategory;
+      patch.interestedCategory = rec.interestedCategory;
+      patch.suggestedBundle = rec.suggestedBundle || undefined;
+      patch.recommendedProducts = JSON.stringify(rec.products.map((p) => p.name));
+      // recommendationJson set by service with portfolio
+      const recText = formatRecommendationText(rec, lang);
+      replies.push(recText);
+      if (!collected.product) {
+        replies.push(
+          lang === "en"
+            ? "Which product is your main priority? (or type full package). Then I’ll take size & quantity."
+            : "Main priority kaunsa product hai? (ya “full package” likhein). Phir size & quantity lete hain.",
+        );
+        patch.nextField = "product";
+      } else {
+        const nf = nextMissingField({ ...state, ...patch, collectedFields: JSON.stringify(collected) });
+        if (nf) {
+          replies.push(q(nf, lang));
+          patch.nextField = nf;
+        }
+      }
+      patch.collectedFields = JSON.stringify(collected);
+      patch.status = "REQUIREMENT_COLLECTED";
+      return {
+        reply: replies.filter(Boolean).join("\n\n"),
+        patch,
+        recommendation: rec,
+        messageType: "recommendations",
+      };
     }
   }
 
@@ -249,17 +325,28 @@ export function processCustomerMessage(
     collected.email = true;
   }
 
+  // User picks from recommendations by naming a product
+  if (text && field === "product") {
+    const named = matchProduct(text);
+    if (named) {
+      patch.product = named;
+      collected.product = true;
+    } else if (/full\s*package|complete/i.test(text) && state.suggestedBundle) {
+      patch.product = state.suggestedBundle;
+      collected.product = true;
+    }
+  }
+
   if (text && SKIP_PATTERNS.test(text)) {
     collected[field] = true;
-    if (["email", "businessName", "deliveryAddress", "remarks", "material"].includes(field)) {
-      // optional skip ok
-    }
   } else if (text) {
     switch (field) {
       case "product": {
-        const p = matchProduct(text) || text;
-        patch.product = p;
-        collected.product = true;
+        if (!collected.product) {
+          const p = matchProduct(text) || text;
+          patch.product = p;
+          collected.product = true;
+        }
         break;
       }
       case "size":

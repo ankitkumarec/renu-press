@@ -11,6 +11,11 @@ import {
   type ConversationState,
 } from "./agent";
 import { ALLOWED_EXT, ALLOWED_MIME, MAX_FILE_BYTES, MAX_STORAGE_BYTES } from "./constants";
+import {
+  matchPortfolio,
+  recommendFromImageScene,
+  serializeRecommendation,
+} from "./recommend";
 import { randomBytes } from "crypto";
 
 function sessionId() {
@@ -70,6 +75,11 @@ function stateFromConv(c: {
   collectedFields: string;
   language: string;
   status: string;
+  customerIntent?: string | null;
+  interestedCategory?: string | null;
+  suggestedBundle?: string | null;
+  recommendedProducts?: string | null;
+  recommendationJson?: string | null;
 }): ConversationState {
   return {
     customerName: c.customerName,
@@ -89,7 +99,20 @@ function stateFromConv(c: {
     collectedFields: c.collectedFields,
     language: c.language,
     status: c.status,
+    customerIntent: c.customerIntent,
+    interestedCategory: c.interestedCategory,
+    suggestedBundle: c.suggestedBundle,
+    recommendedProducts: c.recommendedProducts,
+    recommendationJson: c.recommendationJson,
   };
+}
+
+async function attachPortfolio(rec: NonNullable<ReturnType<typeof processCustomerMessage>["recommendation"]>) {
+  const items = await prisma.portfolioItem.findMany({
+    orderBy: [{ isFeatured: "desc" }, { sortOrder: "asc" }],
+    take: 24,
+  });
+  return matchPortfolio(rec.products, items);
 }
 
 async function ensureLeadAndNotify(conversationId: string) {
@@ -148,7 +171,13 @@ async function ensureLeadAndNotify(conversationId: string) {
         city: conv.city,
         businessName: conv.businessName,
         summary,
-        notes: rec.join(", "),
+        notes: [
+          conv.suggestedBundle ? `Bundle: ${conv.suggestedBundle}` : "",
+          conv.customerIntent ? `Intent: ${conv.customerIntent}` : "",
+          `Recommended: ${rec.join(", ")}`,
+        ]
+          .filter(Boolean)
+          .join(" · "),
         source: "support_desk",
       },
     });
@@ -242,13 +271,23 @@ export async function handleChat(sessionId: string, message: string) {
 
   const result = processCustomerMessage(stateFromConv(conv), text);
   let reply = result.reply;
+  let meta: string | null = null;
 
-  const polished = await polishWithGrok({
-    systemContext: buildSummary({ ...stateFromConv(conv), ...result.patch }, []),
-    userMessage: text,
-    draftReply: reply,
-  });
-  if (polished) reply = polished;
+  if (result.recommendation) {
+    const portfolio = await attachPortfolio(result.recommendation);
+    meta = serializeRecommendation(result.recommendation, portfolio);
+    result.patch.recommendationJson = meta;
+  }
+
+  // Don't polish recommendation cards into unstructured prose when we have structured cards
+  if (!result.recommendation) {
+    const polished = await polishWithGrok({
+      systemContext: buildSummary({ ...stateFromConv(conv), ...result.patch }, []),
+      userMessage: text,
+      draftReply: reply,
+    });
+    if (polished) reply = polished;
+  }
 
   const data: Record<string, unknown> = {
     lastCustomerAt: new Date(),
@@ -277,6 +316,10 @@ export async function handleChat(sessionId: string, message: string) {
     "urgency",
     "aiSummary",
     "recommendedProducts",
+    "customerIntent",
+    "interestedCategory",
+    "suggestedBundle",
+    "recommendationJson",
   ] as const;
   for (const k of keys) {
     if (p[k] !== undefined) data[k] = p[k];
@@ -292,21 +335,29 @@ export async function handleChat(sessionId: string, message: string) {
       conversationId: conv.id,
       role: "agent",
       content: reply,
-      messageType: "text",
+      messageType: result.messageType || "text",
+      metadata: meta,
     },
   });
 
   if (p.readyForHandover) {
     await ensureLeadAndNotify(conv.id);
   } else if (p.phone && p.customerName && p.product) {
-    // Partial lead early for CRM visibility
     const updated = await prisma.supportConversation.findUnique({ where: { id: conv.id } });
     if (updated?.phone && updated.customerName && (updated.leadScore || 0) >= 40) {
       await ensureLeadAndNotify(conv.id);
     }
   }
 
-  return { reply, message: agentMsg, conversationId: conv.id, sessionId: conv.sessionId };
+  return {
+    reply,
+    message: agentMsg,
+    conversationId: conv.id,
+    sessionId: conv.sessionId,
+    recommendation: result.recommendation
+      ? JSON.parse(meta || "{}")
+      : null,
+  };
 }
 
 export async function handleUpload(opts: {
@@ -373,18 +424,31 @@ export async function handleUpload(opts: {
 
   const lang = (conv.language as "hi" | "en" | "hinglish") || "hinglish";
   const fileReply = buildFileAgentReply(analysis, lang);
-  const result = processCustomerMessage(stateFromConv(conv), opts.caption || "", {
+  const imageRec = recommendFromImageScene(analysis.category, opts.fileName, lang);
+  const result = processCustomerMessage(stateFromConv(conv), opts.caption || analysis.category, {
     fileJustUploaded: true,
     fileReply,
+    forceRecommendation: imageRec,
   });
 
   let reply = result.reply;
-  const polished = await polishWithGrok({
-    systemContext: `File: ${opts.fileName} · ${analysis.summary}`,
-    userMessage: opts.caption || `[file ${opts.fileName}]`,
-    draftReply: reply,
-  });
-  if (polished) reply = polished;
+  let meta: string | null = null;
+  if (result.recommendation) {
+    const portfolio = await attachPortfolio(result.recommendation);
+    meta = serializeRecommendation(result.recommendation, portfolio);
+    result.patch.recommendationJson = meta;
+  } else {
+    meta = JSON.stringify({ fileId: file.id, analysis });
+  }
+
+  if (!result.recommendation) {
+    const polished = await polishWithGrok({
+      systemContext: `File: ${opts.fileName} · ${analysis.summary}`,
+      userMessage: opts.caption || `[file ${opts.fileName}]`,
+      draftReply: reply,
+    });
+    if (polished) reply = polished;
+  }
 
   const data: Record<string, unknown> = {
     lastCustomerAt: new Date(),
@@ -399,6 +463,12 @@ export async function handleUpload(opts: {
     "leadScore",
     "urgency",
     "aiSummary",
+    "product",
+    "recommendedProducts",
+    "customerIntent",
+    "interestedCategory",
+    "suggestedBundle",
+    "recommendationJson",
   ] as const) {
     if (p[k] !== undefined) data[k] = p[k];
   }
@@ -410,14 +480,19 @@ export async function handleUpload(opts: {
       conversationId: conv.id,
       role: "agent",
       content: reply,
-      messageType: "text",
-      metadata: JSON.stringify({ fileId: file.id, analysis }),
+      messageType: result.messageType || "text",
+      metadata: meta,
     },
   });
 
   if (p.readyForHandover) await ensureLeadAndNotify(conv.id);
 
-  return { file, reply, analysis };
+  return {
+    file,
+    reply,
+    analysis,
+    recommendation: result.recommendation ? JSON.parse(meta || "{}") : null,
+  };
 }
 
 /** Hook for future AV scanning integration */

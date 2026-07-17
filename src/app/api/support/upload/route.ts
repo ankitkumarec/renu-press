@@ -49,6 +49,7 @@ export async function POST(req: Request) {
         sizeBytes: result.file.sizeBytes,
       },
       analysis: result.analysis,
+      recommendation: result.recommendation,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Upload failed";

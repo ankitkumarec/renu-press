@@ -302,6 +302,12 @@ model SupportConversation {
   leadScore            Int      @default(0)
   aiSummary            String?
   recommendedProducts  String?
+  /// Customer intent label (e.g. clothing shop branding)
+  customerIntent       String?
+  interestedCategory   String?
+  suggestedBundle      String?
+  /// Full JSON recommendation payload for ERP / chat cards
+  recommendationJson   String?
   /// JSON map of collected field keys
   collectedFields      String   @default("{}")
   language             String   @default("hinglish")

@@ -71,7 +71,7 @@ export default async function ErpSupportListPage() {
             <thead className="border-b border-white/10 bg-white/[0.03] text-[10px] tracking-wider text-slate-500 uppercase">
               <tr>
                 <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Product</th>
+                <th className="px-4 py-3">Intent / Product</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Urgency</th>
                 <th className="px-4 py-3">Score</th>
@@ -86,7 +86,15 @@ export default async function ErpSupportListPage() {
                     <div className="font-semibold text-white">{c.customerName || "— Guest —"}</div>
                     <div className="text-xs text-slate-500">{c.phone || "No phone yet"}</div>
                   </td>
-                  <td className="px-4 py-3 text-slate-300">{c.product || "—"}</td>
+                  <td className="px-4 py-3 text-slate-300">
+                    <div>{c.product || "—"}</div>
+                    {c.customerIntent ? (
+                      <div className="text-[10px] text-cyan-400/90">{c.customerIntent}</div>
+                    ) : null}
+                    {c.suggestedBundle ? (
+                      <div className="text-[10px] text-violet-400/80">{c.suggestedBundle}</div>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_COLOR[c.status] || "bg-white/10 text-slate-300"}`}
