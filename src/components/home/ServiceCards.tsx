@@ -34,30 +34,70 @@ const GRADS = [
   "from-cyan-400/90 to-blue-700/90",
 ];
 
+/** Clear, name-matching print visuals */
 function imageForService(name: string, index: number) {
   const n = name.toLowerCase();
-  if (n.includes("offset") || n.includes("digital"))
-    return "https://images.unsplash.com/photo-1563986768494-4dee2763ff3f?w=800&q=80";
-  if (n.includes("flex") || n.includes("vinyl") || n.includes("banner") || n.includes("hoarding") || n.includes("sign"))
-    return "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80";
-  if (n.includes("canvas") || n.includes("photo") || n.includes("frame"))
-    return "https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=800&q=80";
+  // Offset / digital press machines
+  if (n.includes("offset") || n.includes("digital print") || n.includes("digital printing"))
+    return "https://images.unsplash.com/photo-1503694978374-8a2fa686963a?w=800&q=80";
+  // Outdoor flex / vinyl / banners / boards
+  if (
+    n.includes("flex") ||
+    n.includes("vinyl") ||
+    n.includes("banner") ||
+    n.includes("hoarding") ||
+    n.includes("standee") ||
+    n.includes("glow") ||
+    n.includes("led sign") ||
+    n.includes("acp") ||
+    n.includes("sign board")
+  )
+    return "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&q=80";
+  // Canvas / large format photo
+  if (n.includes("canvas"))
+    return "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&q=80";
+  if (n.includes("photo frame") || n.includes("frame"))
+    return "https://images.unsplash.com/photo-1513519245088-0e12902e35ca?w=800&q=80";
+  if (n.includes("passport") || (n.includes("photo") && !n.includes("print")))
+    return "https://images.unsplash.com/photo-1454923634634-bd1614719a7b?w=800&q=80";
+  if (n.includes("photo print"))
+    return "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=800&q=80";
+  // Wedding / invitation cards
   if (n.includes("wedding") || n.includes("invitation"))
-    return "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80";
-  if (n.includes("visiting") || n.includes("business card") || n.includes("letterhead") || n.includes("bill"))
+    return "https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=800&q=80";
+  // Business / visiting cards stack
+  if (n.includes("visiting") || n.includes("business card"))
     return "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80";
-  if (n.includes("id") || n.includes("pvc") || n.includes("lanyard"))
-    return "https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=800&q=80";
-  if (n.includes("t-shirt") || n.includes("polo") || n.includes("hoodie") || n.includes("cap"))
-    return "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&q=80";
-  if (n.includes("mug") || n.includes("gift") || n.includes("trophy") || n.includes("medal"))
-    return "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=800&q=80";
-  if (n.includes("packag") || n.includes("sticker") || n.includes("label"))
-    return "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80";
+  if (n.includes("letterhead") || n.includes("bill book") || n.includes("stationery") || n.includes("certificate"))
+    return "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=800&q=80";
+  // ID / PVC cards (badges, not resume)
+  if (n.includes("id card") || n.includes("pvc") || n.includes("employee card") || n.includes("student card") || n.includes("lanyard"))
+    return "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800&q=80";
+  // Apparel
+  if (n.includes("t-shirt") || n.includes("polo") || n.includes("hoodie") || n.includes("cap") || n.includes("shirt"))
+    return "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80";
+  // Mugs / gifts / trophies
+  if (n.includes("mug") || n.includes("bottle") || n.includes("gift") || n.includes("keychain") || n.includes("pen print"))
+    return "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=800&q=80";
+  if (n.includes("trophy") || n.includes("award") || n.includes("medal"))
+    return "https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=800&q=80";
+  // Laser / CNC / acrylic / 3d
+  if (n.includes("laser") || n.includes("cnc") || n.includes("acrylic") || n.includes("3d"))
+    return "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80";
+  // Packaging / stickers / labels
+  if (n.includes("packag") || n.includes("sticker") || n.includes("label") || n.includes("bag"))
+    return "https://images.unsplash.com/photo-1607083206968-13611e3d76db?w=800&q=80";
+  // Book / brochure / magazine
+  if (n.includes("book") || n.includes("brochure") || n.includes("catalogue") || n.includes("magazine") || n.includes("flyer") || n.includes("poster"))
+    return "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&q=80";
+  // Branding / vehicle
+  if (n.includes("branding") || n.includes("vehicle") || n.includes("wall graphic") || n.includes("campaign"))
+    return "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80";
+
   const fallback = [
-    "https://images.unsplash.com/photo-1626785774573-4b7993143486?w=800&q=80",
-    "https://images.unsplash.com/photo-1563986768494-4dee2763ff3f?w=800&q=80",
-    "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80",
+    "https://images.unsplash.com/photo-1503694978374-8a2fa686963a?w=800&q=80",
+    "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&q=80",
+    "https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=800&q=80",
     "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80",
   ];
   return fallback[index % fallback.length];
