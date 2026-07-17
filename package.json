@@ -12,7 +12,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && prisma db push && tsx prisma/seed.ts && next build"
+    "vercel-build": "node -e \"require('fs').copyFileSync('.env.production','.env')\" && prisma generate && prisma db push && tsx prisma/seed.ts && next build"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
