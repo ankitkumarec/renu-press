@@ -72,6 +72,7 @@ export function Footer({ settings }: { settings: SiteSettings }) {
           <div className="text-[11px] font-bold tracking-[0.2em] text-cyan-300/80 uppercase">Orders</div>
           <ul className="mt-4 space-y-2.5 text-sm text-slate-400">
             {[
+              ["/support", "Support Desk"],
               ["/quote", "Quick quote"],
               ["/order", "Book order"],
               ["/track", "Track order"],

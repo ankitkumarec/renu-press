@@ -21,11 +21,13 @@ import {
   ClipboardList,
   BarChart3,
   Building2,
+  Headphones,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/erp", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/erp/support", label: "Support Desk", icon: Headphones },
   { href: "/erp/orders", label: "Orders", icon: ShoppingCart },
   { href: "/erp/production", label: "Production", icon: Factory },
   { href: "/erp/inventory", label: "Inventory", icon: Package },

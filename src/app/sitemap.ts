@@ -6,7 +6,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const services = await prisma.service.findMany({ where: { isActive: true }, select: { slug: true, updatedAt: true } });
   const posts = await prisma.blogPost.findMany({ where: { published: true }, select: { slug: true, updatedAt: true } });
 
-  const staticRoutes = ["", "/services", "/about", "/portfolio", "/gallery", "/quote", "/order", "/track", "/contact", "/faq", "/blog", "/careers", "/process"].map(
+  const staticRoutes = ["", "/services", "/about", "/portfolio", "/gallery", "/quote", "/order", "/track", "/contact", "/faq", "/blog", "/careers", "/process", "/support"].map(
     (p) => ({
       url: `${base}${p}`,
       lastModified: new Date(),

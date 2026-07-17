@@ -259,18 +259,116 @@ model Industry {
 }
 
 model Lead {
-  id        String    @id @default(cuid())
-  name      String
-  phone     String
-  email     String?
-  service   String?
-  message   String
-  source    String    @default("website")
-  status    String    @default("new")
-  notes     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  crmNotes  CrmNote[]
+  id          String    @id @default(cuid())
+  name        String
+  phone       String
+  email       String?
+  service     String?
+  message     String
+  source      String    @default("website")
+  status      String    @default("new")
+  notes       String?
+  urgency      String    @default("normal")
+  leadScore    Int       @default(0)
+  city         String?
+  businessName String?
+  summary      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  crmNotes     CrmNote[]
+  conversation SupportConversation?
+}
+
+/// Digital Support Desk — full conversation + ERP handover
+model SupportConversation {
+  id                   String   @id @default(cuid())
+  sessionId            String   @unique
+  customerName         String?
+  phone                String?
+  email                String?
+  businessName         String?
+  city                 String?
+  deliveryAddress      String?
+  product              String?
+  size                 String?
+  material             String?
+  quantity             String?
+  deadline             String?
+  budget               String?
+  remarks              String?
+  /// NEW_INQUIRY | REQUIREMENT_COLLECTED | QUALIFIED | WAITING_REVIEW | QUOTE_PENDING | QUOTE_SENT | NEGOTIATION | CONFIRMED | PRODUCTION | COMPLETED | LOST
+  status               String   @default("NEW_INQUIRY")
+  urgency              String   @default("normal")
+  leadScore            Int      @default(0)
+  aiSummary            String?
+  recommendedProducts  String?
+  /// JSON map of collected field keys
+  collectedFields      String   @default("{}")
+  language             String   @default("hinglish")
+  nextField            String?  @default("product")
+  leadId               String?  @unique
+  lead                 Lead?    @relation(fields: [leadId], references: [id])
+  notifiedAdmin        Boolean  @default(false)
+  quotePrice           Float?
+  quoteDelivery        String?
+  quoteRemarks         String?
+  quotePdfUrl          String?
+  quoteStatus          String?
+  adminNotifiedAt      DateTime?
+  lastCustomerAt       DateTime?
+  lastAgentAt          DateTime?
+  theme                String   @default("dark")
+  isOpen               Boolean  @default(true)
+  messages             SupportMessage[]
+  files                SupportFile[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model SupportMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// customer | agent | system | admin
+  role           String
+  content        String
+  /// text | image | file | voice | system
+  messageType    String   @default("text")
+  metadata       String?
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model SupportFile {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  messageId      String?
+  fileName       String
+  mimeType       String
+  sizeBytes      Int      @default(0)
+  /// data URL or relative path (size-limited)
+  storageData    String?
+  analysis       String?
+  ocrText        String?
+  category       String?
+  version        Int      @default(1)
+  deleted        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+model AdminAlert {
+  id        String   @id @default(cuid())
+  type      String   @default("SUPPORT_LEAD")
+  title     String
+  body      String
+  meta      String?
+  read      Boolean  @default(false)
+  href      String?
+  createdAt DateTime @default(now())
 }
 
 model Quote {
