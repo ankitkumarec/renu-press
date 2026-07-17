@@ -28,6 +28,7 @@ import {
   SUPPORT_DISPLAY_NAME,
   SUPPORT_STATUS_LINE,
   SUPPORT_VERIFIED,
+  WELCOME_QUICK_REPLIES,
 } from "@/lib/support/constants";
 
 type Msg = {
@@ -41,7 +42,8 @@ type Msg = {
 
 const EMOJIS = ["👍", "🙏", "😊", "📦", "🎨", "OK", "✅"];
 
-const SESSION_KEY = "rp_support_session";
+/** Bump key when welcome UX changes so users get fresh greeting */
+const SESSION_KEY = "rp_support_session_v3";
 
 export function SupportDeskWidget({
   defaultOpen = false,
@@ -355,10 +357,35 @@ export function SupportDeskWidget({
                 </div>
               ) : null}
 
-              {messages.map((m) => {
+              {messages.map((m, msgIndex) => {
                 const mine = m.role === "customer";
                 const system = m.role === "system" || m.role === "admin";
                 const printR = !mine ? parsePrintReport(m.metadata) : null;
+                let welcomeChips: { id: string; label: string; send: string }[] | null = null;
+                if (!mine && m.metadata) {
+                  try {
+                    const j = JSON.parse(m.metadata) as {
+                      type?: string;
+                      quickReplies?: { id: string; label: string; send: string }[];
+                    };
+                    if (j.type === "welcome" && j.quickReplies?.length) welcomeChips = j.quickReplies;
+                  } catch {
+                    /* ignore */
+                  }
+                }
+                // Fallback chips on first agent message if no metadata (old sessions)
+                const onlyWelcome =
+                  !mine &&
+                  msgIndex === 0 &&
+                  messages.filter((x) => x.role === "customer").length === 0 &&
+                  !welcomeChips;
+                if (onlyWelcome) {
+                  welcomeChips = WELCOME_QUICK_REPLIES.map((q) => ({
+                    id: q.id,
+                    label: q.label,
+                    send: q.send,
+                  }));
+                }
                 let rec = !mine && !printR ? parseRecMetadata(m.metadata) : null;
                 // recommendation may be nested inside print report meta
                 if (!rec && m.metadata) {
@@ -427,6 +454,26 @@ export function SupportDeskWidget({
                       ) : (
                         <span className="whitespace-pre-wrap">{m.content}</span>
                       )}
+                      {welcomeChips && messages.filter((x) => x.role === "customer").length === 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {welcomeChips.map((chip) => (
+                            <button
+                              key={chip.id}
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void sendText(chip.send)}
+                              className={cn(
+                                "rounded-full border px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]",
+                                dark
+                                  ? "border-white/15 bg-white/10 text-white hover:border-violet-400/40 hover:bg-violet-500/20"
+                                  : "border-slate-200 bg-slate-50 text-slate-800 hover:border-violet-300 hover:bg-violet-50",
+                              )}
+                            >
+                              {chip.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
                       {mine ? (
                         <div className="mt-1 flex items-center justify-end gap-0.5 text-[10px] text-white/70">
                           {seenIds.has(m.id) || !m.id.startsWith("tmp_") ? (

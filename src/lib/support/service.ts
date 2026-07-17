@@ -10,7 +10,13 @@ import {
   recommendedProducts,
   type ConversationState,
 } from "./agent";
-import { ALLOWED_EXT, ALLOWED_MIME, MAX_FILE_BYTES, MAX_STORAGE_BYTES } from "./constants";
+import {
+  ALLOWED_EXT,
+  ALLOWED_MIME,
+  MAX_FILE_BYTES,
+  MAX_STORAGE_BYTES,
+  welcomeMessageMetadata,
+} from "./constants";
 import {
   matchPortfolio,
   recommendFromImageScene,
@@ -46,7 +52,8 @@ export async function getOrCreateConversation(existingSessionId?: string | null)
         create: {
           role: "agent",
           content: welcome,
-          messageType: "text",
+          messageType: "welcome",
+          metadata: welcomeMessageMetadata(),
         },
       },
     },

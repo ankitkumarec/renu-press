@@ -209,26 +209,43 @@ Our support team is reviewing your request.
 We'll share the best quotation with you shortly.`,
 };
 
+/** Quick-start chips under welcome */
+export const WELCOME_QUICK_REPLIES = [
+  { id: "banner", label: "📢 Banner", send: "Banner Printing" },
+  { id: "visiting", label: "💳 Visiting Card", send: "Visiting Cards" },
+  { id: "gift", label: "🎁 Gift Printing", send: "Corporate Gifts / Customized Gifts" },
+  { id: "tshirt", label: "👕 T-Shirt", send: "T-Shirt Printing" },
+  { id: "packaging", label: "📦 Packaging", send: "Packaging" },
+  { id: "other", label: "✍️ Something Else", send: "Something else — custom printing" },
+] as const;
+
 /** Official welcome — human support team voice (never AI/bot wording) */
 export function welcomeMessage(_lang: "hi" | "en" | "hinglish" = "hinglish") {
-  return `👋 Welcome to RENU PRESS.
+  return `👋 Welcome to RENU PRESS
 
 Thank you for contacting us.
 
-We're here to help with all your printing and branding requirements.
+Please tell us what you need.
 
-You can send us
+You can also upload:
 
-📷 Images
+📷 Image
 🎨 Logo
 📄 PDF
-🖼 Banner Design
+🖼️ Banner Design
 💳 Visiting Card
-📁 Artwork
 📦 Packaging Design
-🏢 Shop Photo
 
-Tell us what you'd like to print.`;
+We'll review everything and our support team will get back to you with the best quotation.
+
+How can we help you today?`;
+}
+
+export function welcomeMessageMetadata() {
+  return JSON.stringify({
+    type: "welcome",
+    quickReplies: WELCOME_QUICK_REPLIES.map((q) => ({ id: q.id, label: q.label, send: q.send })),
+  });
 }
 
 export const SUPPORT_DISPLAY_NAME = "❤️ RENU PRESS Support Team";
