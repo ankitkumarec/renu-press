@@ -73,36 +73,39 @@ export const PRODUCT_CATALOGUE = [
   "Banner Printing",
   "Flex Printing",
   "Vinyl Printing",
+  "Business Cards",
   "Visiting Cards",
   "Wedding Cards",
-  "Business Cards",
-  "Bill Books",
+  "Invitation Cards",
   "Letterheads",
-  "Brochures",
-  "Flyers",
+  "Bill Books",
+  "Receipt Books",
+  "Certificates",
+  "School Printing",
+  "ID Cards",
+  "PVC Cards",
+  "Photo Printing",
+  "Frames",
   "Packaging",
+  "Sticker Printing",
+  "Labels",
   "T-Shirts",
   "Hoodies",
   "Caps",
   "Mugs",
   "Corporate Gifts",
   "Customized Gifts",
+  "Awards",
   "Trophies",
   "Medals",
-  "ID Cards",
-  "PVC Cards",
-  "Photo Printing",
-  "Frames",
-  "Sign Boards",
+  "LED Sign Boards",
   "ACP Boards",
   "Glow Sign Boards",
-  "LED Boards",
   "Vehicle Branding",
   "Office Branding",
   "Wall Graphics",
-  "Sticker Printing",
-  "Labels",
-  "Any Custom Printing",
+  "Glass Branding",
+  "Custom Printing",
 ] as const;
 
 /** Collection order — one question at a time */
@@ -185,49 +188,51 @@ export const LEAD_STATUSES = [
   "CONFIRMED",
   "PRODUCTION",
   "COMPLETED",
+  "CANCELLED",
   "LOST",
 ] as const;
 
 export const HANDOVER_MESSAGE = {
-  hi: `Dhanyavaad 🙏
+  hi: `Thank you.
 
-Aapki saari requirements successfully receive ho gayi hain.
-
-Hamari support team aapke request ko review kar rahi hai.
-Best quotation aur delivery details jald share kiye jayenge.
-
-Final price, discount, ya delivery date sirf team approve karke batayegi — yahan se koi final rate nahi diya jata.`,
-  en: `Thank you 🙏
-
-Your requirements have been received successfully.
+We've received your complete requirement.
 
 Our support team is reviewing your request.
-The best quotation and delivery details will be shared shortly.
 
-Final price, discounts, and delivery dates are always confirmed by our team — we do not quote final rates here.`,
+We'll share the best quotation with you shortly.`,
+  en: `Thank you.
+
+We've received your complete requirement.
+
+Our support team is reviewing your request.
+
+We'll share the best quotation with you shortly.`,
 };
 
-export const WELCOME_SERVICES = PRODUCT_CATALOGUE.join("\n");
-
-export function welcomeMessage(lang: "hi" | "en" | "hinglish" = "hinglish") {
-  if (lang === "en") {
-    return `Welcome to RENU PRESS 👋
+/** Official welcome — human support team voice (never AI/bot wording) */
+export function welcomeMessage(_lang: "hi" | "en" | "hinglish" = "hinglish") {
+  return `👋 Welcome to RENU PRESS.
 
 Thank you for contacting us.
 
-I can help you with
+We're here to help with all your printing and branding requirements.
 
-${WELCOME_SERVICES}
+You can send us
 
-Please tell us what you need.`;
-  }
-  return `Welcome to RENU PRESS 👋
+📷 Images
+🎨 Logo
+📄 PDF
+🖼 Banner Design
+💳 Visiting Card
+📁 Artwork
+📦 Packaging Design
+🏢 Shop Photo
 
-Thank you for contacting us.
-
-Main aapki madad kar sakta/sakti hoon:
-
-${WELCOME_SERVICES}
-
-Please bataiye aapko kya chahiye.`;
+Tell us what you'd like to print.`;
 }
+
+export const SUPPORT_DISPLAY_NAME = "❤️ RENU PRESS Support Team";
+export const SUPPORT_STATUS_LINE = "🟢 Online Now · Usually replies within 5 minutes";
+export const SUPPORT_VERIFIED = "✓ Verified Business";
+export const CHAT_PLACEHOLDER = "👋 Hi! Tell us what you'd like to print...";
+export const CHAT_ATTACH_HINT = "📎 Attach Logo • Image • PDF • Artwork";

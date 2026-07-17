@@ -3,23 +3,32 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Headphones,
+  Heart,
   X,
   Send,
   Paperclip,
   Image as ImageIcon,
   FileText,
   Loader2,
-  Circle,
   Maximize2,
   Minimize2,
   Sun,
   Moon,
   Smile,
+  BadgeCheck,
+  Check,
+  CheckCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseRecMetadata, ProductCards } from "./ProductCards";
 import { parsePrintReport, PrintReadinessCard } from "./PrintReadinessCard";
+import {
+  CHAT_ATTACH_HINT,
+  CHAT_PLACEHOLDER,
+  SUPPORT_DISPLAY_NAME,
+  SUPPORT_STATUS_LINE,
+  SUPPORT_VERIFIED,
+} from "@/lib/support/constants";
 
 type Msg = {
   id: string;
@@ -50,10 +59,10 @@ export function SupportDeskWidget({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [typing, setTyping] = useState(false);
-  const [online] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [booting, setBooting] = useState(false);
+  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -118,9 +127,10 @@ export function SupportDeskWidget({
       });
       const data = await res.json();
       if (data.ok) {
+        const custId = `c_${Date.now()}`;
         setMessages((m) => [
           ...m.filter((x) => x.id !== optimistic.id),
-          { ...optimistic, id: `c_${Date.now()}` },
+          { ...optimistic, id: custId },
           {
             id: data.message.id,
             role: "agent",
@@ -130,6 +140,7 @@ export function SupportDeskWidget({
             createdAt: data.message.createdAt,
           },
         ]);
+        setSeenIds((s) => new Set(s).add(custId));
       } else {
         setMessages((m) => [
           ...m,
@@ -243,17 +254,17 @@ export function SupportDeskWidget({
             exit={{ opacity: 0, y: 16, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
             className={cn(
-              "flex flex-col overflow-hidden border shadow-2xl",
+              "flex flex-col overflow-hidden border shadow-2xl backdrop-blur-2xl",
               embedded
-                ? "relative h-[min(720px,75dvh)] w-full rounded-2xl"
+                ? "relative h-[min(740px,78dvh)] w-full rounded-3xl"
                 : "bottom-safe fixed z-[60]",
               !embedded &&
                 (expanded
-                  ? "inset-3 sm:inset-6 rounded-2xl"
-                  : "right-3 left-3 h-[min(640px,78dvh)] rounded-2xl sm:right-6 sm:left-auto sm:w-[400px]"),
+                  ? "inset-3 sm:inset-6 rounded-3xl"
+                  : "right-3 left-3 h-[min(680px,82dvh)] rounded-3xl sm:right-6 sm:left-auto sm:w-[420px]"),
               dark
-                ? "border-white/10 bg-[#0b1220] text-slate-100"
-                : "border-slate-200 bg-white text-slate-900",
+                ? "border-white/15 bg-[#0a0f1a]/92 text-slate-100 shadow-violet-950/40"
+                : "border-white/60 bg-white/90 text-slate-900 shadow-slate-300/50",
             )}
             style={
               embedded || expanded
@@ -261,63 +272,73 @@ export function SupportDeskWidget({
                 : { bottom: "max(1rem, env(safe-area-inset-bottom, 1rem))" }
             }
           >
-            {/* Header */}
+            {/* Premium header — Intercom / WhatsApp Business style */}
             <div
               className={cn(
-                "flex items-center gap-3 border-b px-4 py-3",
+                "relative border-b px-4 py-3.5",
                 dark
-                  ? "border-white/10 bg-gradient-to-r from-violet-600/30 via-fuchsia-600/20 to-orange-500/20"
-                  : "border-slate-100 bg-gradient-to-r from-violet-50 via-fuchsia-50 to-orange-50",
+                  ? "border-white/10 bg-gradient-to-br from-[#1a1030]/95 via-[#121a2e]/90 to-[#0c1424]/95"
+                  : "border-slate-100/80 bg-gradient-to-br from-white via-violet-50/80 to-orange-50/60",
               )}
             >
-              <div className="relative grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-violet-500 to-orange-500 text-white shadow-lg">
-                <Headphones className="h-5 w-5" />
-                {online ? (
-                  <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-[#0b1220] bg-emerald-400" />
-                ) : null}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold">RENU PRESS Support Team</div>
-                <div className={cn("flex items-center gap-1.5 text-[11px]", dark ? "text-emerald-300/90" : "text-emerald-600")}>
-                  <Circle className="h-2 w-2 fill-current" />
-                  Online · Digital Support Desk
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-400/60 to-transparent" />
+              <div className="flex items-start gap-3">
+                <div className="relative shrink-0">
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-rose-500 via-violet-600 to-orange-500 text-white shadow-lg shadow-violet-500/30">
+                    <Heart className="h-5 w-5 fill-white/90" />
+                  </div>
+                  <span className="absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#0a0f1a] bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                </div>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <div className="truncate text-[15px] font-bold tracking-tight">{SUPPORT_DISPLAY_NAME}</div>
+                  <div className={cn("mt-0.5 text-[11px] font-medium", dark ? "text-emerald-300" : "text-emerald-600")}>
+                    {SUPPORT_STATUS_LINE}
+                  </div>
+                  <div className={cn("mt-1 inline-flex items-center gap-1 text-[10px] font-semibold", dark ? "text-cyan-300/90" : "text-cyan-700")}>
+                    <BadgeCheck className="h-3.5 w-3.5" />
+                    {SUPPORT_VERIFIED}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+                    className={cn("rounded-xl p-2", dark ? "hover:bg-white/10" : "hover:bg-black/5")}
+                    aria-label="Toggle theme"
+                  >
+                    {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </button>
+                  {!embedded ? (
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((e) => !e)}
+                      className={cn("rounded-xl p-2", dark ? "hover:bg-white/10" : "hover:bg-black/5")}
+                      aria-label="Expand"
+                    >
+                      {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                    </button>
+                  ) : null}
+                  {!embedded ? (
+                    <button
+                      type="button"
+                      onClick={() => setOpen(false)}
+                      className={cn("rounded-xl p-2", dark ? "hover:bg-white/10" : "hover:bg-black/5")}
+                      aria-label="Close"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : null}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-                className={cn("rounded-lg p-2", dark ? "hover:bg-white/10" : "hover:bg-slate-100")}
-                aria-label="Toggle theme"
-              >
-                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
-              {!embedded ? (
-                <button
-                  type="button"
-                  onClick={() => setExpanded((e) => !e)}
-                  className={cn("rounded-lg p-2", dark ? "hover:bg-white/10" : "hover:bg-slate-100")}
-                  aria-label="Expand"
-                >
-                  {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                </button>
-              ) : null}
-              {!embedded ? (
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className={cn("rounded-lg p-2", dark ? "hover:bg-white/10" : "hover:bg-slate-100")}
-                  aria-label="Close"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : null}
             </div>
 
             {/* Messages */}
             <div
               className={cn(
                 "relative flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4",
-                dark ? "bg-[#070d18]" : "bg-slate-50",
+                dark
+                  ? "bg-[radial-gradient(ellipse_at_top,_rgba(124,58,237,0.08),_transparent_50%),#070b14]"
+                  : "bg-[radial-gradient(ellipse_at_top,_rgba(249,115,22,0.06),_transparent_50%),#f8fafc]",
                 dragOver && "ring-2 ring-inset ring-violet-500",
               )}
               onDragOver={(e) => {
@@ -328,8 +349,9 @@ export function SupportDeskWidget({
               onDrop={onDrop}
             >
               {booting ? (
-                <div className="flex h-full items-center justify-center gap-2 text-sm text-slate-400">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Connecting support desk…
+                <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-slate-400">
+                  <Loader2 className="h-5 w-5 animate-spin text-violet-400" />
+                  <span>Connecting to support…</span>
                 </div>
               ) : null}
 
@@ -356,22 +378,23 @@ export function SupportDeskWidget({
                   >
                     <div
                       className={cn(
-                        "max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm",
+                        "max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-md backdrop-blur-sm",
                         printR || rec ? "sm:max-w-[100%]" : "whitespace-pre-wrap",
                         mine
-                          ? "rounded-br-md bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white whitespace-pre-wrap"
+                          ? "rounded-br-md bg-gradient-to-br from-violet-600 via-fuchsia-600 to-orange-500 text-white whitespace-pre-wrap shadow-violet-500/20"
                           : system
                             ? dark
                               ? "border border-amber-500/30 bg-amber-500/10 text-amber-100 whitespace-pre-wrap"
                               : "border border-amber-200 bg-amber-50 text-amber-900 whitespace-pre-wrap"
                             : dark
-                              ? "rounded-bl-md border border-white/10 bg-white/8 text-slate-100"
-                              : "rounded-bl-md border border-slate-200 bg-white text-slate-800",
+                              ? "rounded-bl-md border border-white/12 bg-white/[0.07] text-slate-100"
+                              : "rounded-bl-md border border-slate-200/80 bg-white/90 text-slate-800",
                       )}
                     >
                       {!mine && !system ? (
-                        <div className={cn("mb-1 text-[10px] font-bold tracking-wide uppercase", dark ? "text-violet-300" : "text-violet-600")}>
-                          Support Team · Pre-press QC
+                        <div className={cn("mb-1 flex items-center gap-1 text-[10px] font-bold tracking-wide", dark ? "text-rose-300/90" : "text-rose-600")}>
+                          <Heart className="h-3 w-3 fill-current" />
+                          RENU PRESS Support
                         </div>
                       ) : null}
                       {m.messageType === "file" || m.messageType === "image" ? (
@@ -404,6 +427,15 @@ export function SupportDeskWidget({
                       ) : (
                         <span className="whitespace-pre-wrap">{m.content}</span>
                       )}
+                      {mine ? (
+                        <div className="mt-1 flex items-center justify-end gap-0.5 text-[10px] text-white/70">
+                          {seenIds.has(m.id) || !m.id.startsWith("tmp_") ? (
+                            <CheckCheck className="h-3.5 w-3.5 text-sky-200" />
+                          ) : (
+                            <Check className="h-3.5 w-3.5" />
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                   </motion.div>
                 );
@@ -413,21 +445,29 @@ export function SupportDeskWidget({
                 <div className="flex justify-start">
                   <div
                     className={cn(
-                      "flex items-center gap-1 rounded-2xl rounded-bl-md border px-4 py-3",
-                      dark ? "border-white/10 bg-white/8" : "border-slate-200 bg-white",
+                      "flex items-center gap-2 rounded-2xl rounded-bl-md border px-4 py-3 backdrop-blur",
+                      dark ? "border-white/10 bg-white/[0.07]" : "border-slate-200 bg-white",
                     )}
                   >
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-400 [animation-delay:0ms]" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-fuchsia-400 [animation-delay:150ms]" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-400 [animation-delay:300ms]" />
+                    <span className="text-[10px] font-semibold text-slate-400">Team is typing</span>
+                    <span className="flex gap-1">
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-400 [animation-delay:0ms]" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-fuchsia-400 [animation-delay:150ms]" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-400 [animation-delay:300ms]" />
+                    </span>
                   </div>
                 </div>
               ) : null}
               <div ref={bottomRef} />
             </div>
 
-            {/* Composer */}
-            <div className={cn("border-t p-3", dark ? "border-white/10 bg-[#0c1424]" : "border-slate-200 bg-white")}>
+            {/* Composer — WhatsApp / Intercom style */}
+            <div
+              className={cn(
+                "border-t p-3 backdrop-blur-xl",
+                dark ? "border-white/10 bg-[#0c1220]/95" : "border-slate-200/80 bg-white/95",
+              )}
+            >
               {showEmoji ? (
                 <div className="mb-2 flex flex-wrap gap-1">
                   {EMOJIS.map((e) => (
@@ -449,7 +489,10 @@ export function SupportDeskWidget({
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className={cn("rounded-xl p-2.5", dark ? "hover:bg-white/10 text-slate-300" : "hover:bg-slate-100 text-slate-600")}
+                  className={cn(
+                    "rounded-xl p-2.5 transition",
+                    dark ? "text-slate-300 hover:bg-white/10" : "text-slate-600 hover:bg-slate-100",
+                  )}
                   aria-label="Attach file"
                   disabled={busy}
                 >
@@ -469,7 +512,10 @@ export function SupportDeskWidget({
                 <button
                   type="button"
                   onClick={() => setShowEmoji((s) => !s)}
-                  className={cn("rounded-xl p-2.5", dark ? "hover:bg-white/10 text-slate-300" : "hover:bg-slate-100 text-slate-600")}
+                  className={cn(
+                    "rounded-xl p-2.5",
+                    dark ? "text-slate-300 hover:bg-white/10" : "text-slate-600 hover:bg-slate-100",
+                  )}
                 >
                   <Smile className="h-5 w-5" />
                 </button>
@@ -483,11 +529,11 @@ export function SupportDeskWidget({
                     }
                   }}
                   rows={1}
-                  placeholder="Type your requirement… (Hinglish OK)"
+                  placeholder={CHAT_PLACEHOLDER}
                   className={cn(
-                    "max-h-28 min-h-[42px] flex-1 resize-none rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500/40",
+                    "max-h-28 min-h-[44px] flex-1 resize-none rounded-2xl border px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500/40",
                     dark
-                      ? "border-white/10 bg-white/5 text-white placeholder:text-slate-500"
+                      ? "border-white/12 bg-white/[0.06] text-white placeholder:text-slate-500"
                       : "border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400",
                   )}
                 />
@@ -495,13 +541,16 @@ export function SupportDeskWidget({
                   type="button"
                   disabled={busy || !input.trim()}
                   onClick={() => void sendText(input)}
-                  className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-600 to-orange-500 text-white shadow-lg disabled:opacity-40"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 via-fuchsia-600 to-orange-500 text-white shadow-lg shadow-violet-500/30 disabled:opacity-40"
                 >
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </button>
               </div>
-              <p className={cn("mt-2 text-center text-[10px]", dark ? "text-slate-500" : "text-slate-400")}>
-                Official RENU PRESS desk · Final quote by team only · Drag & drop files
+              <p className={cn("mt-2 text-center text-[10px] font-medium", dark ? "text-slate-500" : "text-slate-400")}>
+                {CHAT_ATTACH_HINT}
+              </p>
+              <p className={cn("mt-0.5 text-center text-[9px]", dark ? "text-slate-600" : "text-slate-400")}>
+                Drag & drop files · Quotation only after team review
               </p>
             </div>
           </motion.div>
@@ -513,15 +562,18 @@ export function SupportDeskWidget({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="bottom-safe fixed left-3 z-50 flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 px-4 py-3 text-sm font-bold text-white shadow-2xl shadow-violet-500/40 transition hover:scale-[1.02] active:scale-95 sm:left-6 sm:px-5"
+          className="bottom-safe fixed left-3 z-50 flex items-center gap-2.5 rounded-full border border-white/20 bg-gradient-to-r from-rose-500 via-violet-600 to-orange-500 px-4 py-3 text-sm font-bold text-white shadow-2xl shadow-violet-500/40 transition hover:scale-[1.03] active:scale-95 sm:left-6 sm:px-5"
           style={{ bottom: "max(5.5rem, calc(env(safe-area-inset-bottom, 1rem) + 4.5rem))" }}
-          aria-label="Open Support Desk"
+          aria-label="Open RENU PRESS Support"
         >
           <span className="relative grid h-8 w-8 place-items-center rounded-full bg-white/20">
-            <Headphones className="h-4 w-4" />
+            <Heart className="h-4 w-4 fill-white" />
             <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-violet-700" />
           </span>
-          <span className="hidden sm:inline">Support Desk</span>
+          <span className="hidden flex-col items-start leading-tight sm:flex">
+            <span className="text-[13px]">Support Team</span>
+            <span className="text-[10px] font-semibold text-white/85">Online now</span>
+          </span>
         </button>
       ) : null}
 

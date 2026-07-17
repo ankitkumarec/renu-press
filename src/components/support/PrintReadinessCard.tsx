@@ -46,7 +46,7 @@ export function PrintReadinessCard({
       <div className={cn("bg-gradient-to-r p-3 text-white", gradeColor(report.grade))}>
         <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.16em] uppercase opacity-90">
           <ShieldCheck className="h-3.5 w-3.5" />
-          Print readiness report
+          Artwork review by Support Team
         </div>
         <div className="mt-1 flex items-end justify-between gap-2">
           <div>
