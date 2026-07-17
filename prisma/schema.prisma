@@ -713,6 +713,22 @@ model DocumentVault {
   createdAt DateTime @default(now())
 }
 
+/// Bill PNG for WhatsApp send (public image URL + optional Cloud API)
+model BillImage {
+  id           String   @id @default(cuid())
+  billNo       String
+  phone        String
+  customerName String?
+  total        Float?
+  /// raw base64 without data: prefix
+  dataBase64   String
+  mimeType     String   @default("image/png")
+  createdAt    DateTime @default(now())
+
+  @@index([billNo])
+  @@index([createdAt])
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?

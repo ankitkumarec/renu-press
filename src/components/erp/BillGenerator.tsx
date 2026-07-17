@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { FileImage, Download, Plus, Trash2, ImagePlus, Loader2 } from "lucide-react";
+import { FileImage, Download, Plus, Trash2, ImagePlus, Loader2, CheckCircle2 } from "lucide-react";
 
 type Line = { name: string; qty: number; rate: number };
 
@@ -24,7 +24,7 @@ function canvasToPngFile(canvas: HTMLCanvasElement, fileName: string): Promise<F
         resolve(new File([blob], fileName, { type: "image/png" }));
       },
       "image/png",
-      1,
+      0.92,
     );
   });
 }
@@ -57,6 +57,8 @@ export function BillGenerator({
   const [gstPct, setGstPct] = useState(18);
   const [waBusy, setWaBusy] = useState(false);
   const [waStatus, setWaStatus] = useState<string | null>(null);
+  const [lastImageUrl, setLastImageUrl] = useState<string | null>(null);
+  const [sentOk, setSentOk] = useState(false);
 
   const subtotal = lines.reduce((s, l) => s + l.qty * l.rate, 0);
   const gst = Math.round((subtotal * gstPct) / 100);
@@ -72,11 +74,9 @@ export function BillGenerator({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Background
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
 
-    // Header bar
     const grad = ctx.createLinearGradient(0, 0, w, 0);
     grad.addColorStop(0, "#ea580c");
     grad.addColorStop(0.5, "#db2777");
@@ -92,7 +92,6 @@ export function BillGenerator({
     ctx.font = "12px Segoe UI, Arial";
     ctx.fillText(address.slice(0, 60), 36, 94);
 
-    // Bill meta
     ctx.fillStyle = "#0f172a";
     ctx.font = "bold 18px Segoe UI, Arial";
     ctx.fillText("TAX INVOICE / BILL", 36, 150);
@@ -102,7 +101,6 @@ export function BillGenerator({
     ctx.fillText(`Date: ${new Date().toLocaleDateString("en-IN")}`, 36, 200);
     if (phone) ctx.fillText(`Shop: ${phone}`, 400, 178);
 
-    // Customer box
     ctx.fillStyle = "#f1f5f9";
     ctx.fillRect(36, 220, w - 72, 70);
     ctx.fillStyle = "#0f172a";
@@ -114,7 +112,6 @@ export function BillGenerator({
     ctx.fillStyle = "#64748b";
     ctx.fillText(`WhatsApp: ${whatsapp || "—"}`, 48, 288);
 
-    // Table header
     let y = 320;
     ctx.fillStyle = "#0f172a";
     ctx.fillRect(36, y, w - 72, 36);
@@ -141,7 +138,6 @@ export function BillGenerator({
       y += 36;
     });
 
-    // Totals
     y += 16;
     ctx.fillStyle = "#475569";
     ctx.font = "14px Segoe UI, Arial";
@@ -186,42 +182,27 @@ export function BillGenerator({
     canvas.toBlob((blob) => {
       if (!blob) return;
       downloadBlob(blob, `${billNo}.png`);
-      setWaStatus(`PNG save: ${billNo}.png (optional)`);
     }, "image/png");
   }
 
-  /** Direct WhatsApp Desktop/Mobile app — browser api.whatsapp.com page skip */
-  function openWhatsAppApp(phoneWa: string) {
-    // whatsapp:// opens installed app directly (no download, no intermediate text page)
-    const appUrl = `whatsapp://send?phone=${phoneWa}`;
-    window.location.href = appUrl;
-  }
-
-  async function copyPngToClipboard(blob: Blob): Promise<boolean> {
-    try {
-      if (!navigator.clipboard || typeof ClipboardItem === "undefined") return false;
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   /**
-   * Goal: sirf bill PNG WhatsApp pe — no long text, no forced download, no api.whatsapp.com page.
-   * 1) Web Share → only PNG file (user picks WhatsApp)
-   * 2) Clipboard PNG + whatsapp:// direct app open → chat me Ctrl+V / paste
+   * Real image send path:
+   * 1) PNG server pe save → public URL
+   * 2) WhatsApp Cloud API se image message (agar keys hain) — true auto-send
+   * 3) Warna Web Share se sirf PNG file (WhatsApp choose)
    */
   async function openWhatsApp() {
     const digits = whatsapp.replace(/\D/g, "");
     if (digits.length < 10) {
-      alert("WhatsApp number sahi daalo (10 digit, country code 91 optional)");
+      alert("WhatsApp number sahi daalo (10 digit)");
       return;
     }
-    const phoneWa = digits.length === 10 ? `91${digits}` : digits;
 
     setWaBusy(true);
     setWaStatus(null);
+    setSentOk(false);
+    setLastImageUrl(null);
+
     try {
       drawBill();
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -231,73 +212,78 @@ export function BillGenerator({
 
       const fileName = `${billNo}.png`;
       const file = await canvasToPngFile(canvas, fileName);
-      const blob = file.slice(0, file.size, "image/png");
+      const dataUrl = canvas.toDataURL("image/png");
 
-      const nav = navigator as Navigator & {
-        canShare?: (data: ShareData) => boolean;
-        share?: (data: ShareData) => Promise<void>;
+      // Server: store + optional Cloud API auto image send
+      const res = await fetch("/api/erp/bills/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          billNo,
+          customerName,
+          whatsapp: digits,
+          total,
+          imageBase64: dataUrl,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        mode?: string;
+        imageUrl?: string;
+        message?: string;
+        cloudApiError?: string;
       };
 
-      // —— 1) Share sheet: ONLY PNG (no words / text message) ——
-      if (typeof nav.canShare === "function" && nav.canShare({ files: [file] }) && typeof nav.share === "function") {
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || "Server pe bill save fail");
+      }
+
+      setLastImageUrl(data.imageUrl || null);
+
+      // —— SUCCESS: Cloud API ne image bhej di ——
+      if (data.mode === "cloud_api") {
+        setSentOk(true);
+        setWaStatus(data.message || "✓ Bill PNG WhatsApp pe bhej di!");
+        return;
+      }
+
+      // —— Share sheet: ONLY the PNG file (no long text) ——
+      const nav = navigator as Navigator & {
+        canShare?: (d: ShareData) => boolean;
+        share?: (d: ShareData) => Promise<void>;
+      };
+
+      if (typeof nav.canShare === "function" && nav.canShare({ files: [file] }) && nav.share) {
         try {
           await nav.share({ files: [file] });
-          setWaStatus("✓ PNG WhatsApp / share me chali — list se WhatsApp choose karo. Koi text nahi, sirf bill image.");
-          await persistBill();
+          setSentOk(true);
+          setWaStatus("✓ Share se WhatsApp choose kiya — PNG image chali. Text message nahi.");
           return;
         } catch (err) {
           if (err instanceof Error && /Abort|cancel/i.test(err.name + err.message)) {
-            setWaStatus("Share cancel.");
+            setWaStatus("Share cancel — neeche image drag karke WhatsApp Web pe chhodo.");
             return;
           }
         }
       }
 
-      // —— 2) No download: copy PNG to clipboard + open WhatsApp app DIRECT ——
-      const copied = await copyPngToClipboard(blob);
-      openWhatsAppApp(phoneWa);
-
-      if (copied) {
-        setWaStatus(
-          "✓ WhatsApp app open · Bill PNG clipboard pe hai — chat open karke Ctrl+V (ya long-press Paste) se image bhejo. Download nahi hua.",
-        );
-      } else {
-        setWaStatus(
-          "✓ WhatsApp app open. Browser clipboard image allow nahi karta — neeche preview pe right-click → Copy image, phir chat me Paste. Download nahi.",
-        );
-      }
-
-      await persistBill();
+      // —— Last working path without download: open share-friendly status ——
+      setWaStatus(
+        data.message ||
+          "PNG ready. Niche preview image ko WhatsApp Web chat pe DRAG & DROP karo — image seedha chat me chali jayegi.",
+      );
     } catch (e) {
       console.error(e);
-      setWaStatus("Issue — dobara try karo.");
-      alert(e instanceof Error ? e.message : "WhatsApp send fail");
+      setWaStatus(e instanceof Error ? e.message : "Fail");
+      alert(e instanceof Error ? e.message : "WhatsApp fail");
     } finally {
       setWaBusy(false);
     }
   }
 
-  async function persistBill() {
-    await fetch("/api/erp/bills", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        billNo,
-        customerName,
-        whatsapp,
-        items: lines,
-        subtotal,
-        gst,
-        total,
-        note,
-      }),
-    }).catch(() => null);
-  }
-
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     drawBill();
-    await persistBill();
   }
 
   const field =
@@ -329,12 +315,12 @@ export function BillGenerator({
           <input className={field} value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
         </label>
         <label className="block text-[11px] font-bold text-slate-400">
-          WhatsApp number
+          Customer WhatsApp (jis number pe image jayegi)
           <input
             className={field}
             value={whatsapp}
             onChange={(e) => setWhatsapp(e.target.value)}
-            placeholder="9876543210 or 919876543210"
+            placeholder="9876543210"
             required
           />
         </label>
@@ -396,7 +382,7 @@ export function BillGenerator({
             onClick={downloadPng}
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/15 py-3 text-sm font-bold"
           >
-            <Download className="h-4 w-4" /> PNG save (optional)
+            <Download className="h-4 w-4" /> PNG save
           </button>
           <button
             type="button"
@@ -405,30 +391,75 @@ export function BillGenerator({
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] py-3 text-sm font-bold text-white disabled:opacity-60"
           >
             {waBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-            WhatsApp pe PNG bhejo
+            WhatsApp pe image bhejo
           </button>
         </div>
+
         {waStatus ? (
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs leading-relaxed text-emerald-100">
-            {waStatus}
+          <div
+            className={`rounded-xl border px-3 py-2 text-xs leading-relaxed ${
+              sentOk
+                ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-100"
+                : "border-amber-500/30 bg-amber-500/10 text-amber-50"
+            }`}
+          >
+            {sentOk ? <CheckCircle2 className="mb-1 inline h-4 w-4" /> : null} {waStatus}
+            {lastImageUrl ? (
+              <div className="mt-2 break-all text-[10px] text-slate-400">
+                Bill image link:{" "}
+                <a href={lastImageUrl} target="_blank" rel="noreferrer" className="text-cyan-300 underline">
+                  open PNG
+                </a>
+              </div>
+            ) : null}
           </div>
         ) : null}
-        <p className="text-[10px] leading-relaxed text-slate-500">
-          <strong className="text-slate-300">WhatsApp pe PNG bhejo</strong> = sirf bill image, lamba text nahi, download nahi.
-          <br />• Direct WhatsApp app open (`whatsapp://`) — browser page skip
-          <br />• Share / clipboard se PNG chat me paste
-        </p>
+
+        <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] leading-relaxed text-slate-400">
+          <p className="font-bold text-slate-300">Image WhatsApp pe kaise jayegi?</p>
+          <ol className="mt-1 list-decimal space-y-1 pl-4">
+            <li>
+              <strong className="text-emerald-300">Best (auto):</strong> Vercel pe{" "}
+              <code className="text-violet-300">WHATSAPP_ACCESS_TOKEN</code> +{" "}
+              <code className="text-violet-300">WHATSAPP_PHONE_NUMBER_ID</code> set karo → image seedha customer pe.
+            </li>
+            <li>
+              <strong className="text-cyan-300">Phone:</strong> Share list me WhatsApp choose → sirf PNG.
+            </li>
+            <li>
+              <strong className="text-orange-300">PC + WhatsApp Web:</strong> right side bill image ko{" "}
+              <em>drag</em> karke chat box pe <em>drop</em> karo — image chat me aa jayegi (download nahi).
+            </li>
+          </ol>
+        </div>
       </form>
 
       <div className="rounded-2xl border border-white/10 bg-white p-3 shadow-xl">
-        <p className="mb-2 text-xs font-bold text-slate-500">Live PNG preview</p>
+        <p className="mb-2 text-xs font-bold text-slate-600">
+          Bill PNG — WhatsApp Web pe <span className="text-emerald-600">drag & drop</span> kar sakte ho
+        </p>
         <canvas ref={canvasRef} className="hidden" />
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={previewUrl} alt="Bill preview" className="w-full rounded-lg border border-slate-200" />
+          <img
+            src={previewUrl}
+            alt="Bill preview — drag to WhatsApp"
+            draggable
+            title="Is image ko WhatsApp Web chat pe drag karke chhodo"
+            className="w-full cursor-grab rounded-lg border-2 border-dashed border-emerald-400/80 active:cursor-grabbing"
+            onDragStart={(e) => {
+              // Help some browsers understand it's a file drag
+              e.dataTransfer.setData("text/uri-list", previewUrl);
+              e.dataTransfer.setData("text/plain", previewUrl);
+              e.dataTransfer.effectAllowed = "copy";
+            }}
+          />
         ) : (
           <div className="grid h-64 place-items-center text-sm text-slate-400">Generating…</div>
         )}
+        <p className="mt-2 text-center text-[10px] text-slate-500">
+          Tip: WhatsApp Web (web.whatsapp.com) open rakho → ye image chat pe khinch ke chhodo → Send
+        </p>
       </div>
     </div>
   );
