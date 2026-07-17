@@ -123,8 +123,11 @@ export function Header({
           <Link href="/track" onClick={() => setOpen(false)} className="rounded-xl px-3 py-3.5 text-base text-slate-300">
             Track order
           </Link>
-          <Link href="/login" onClick={() => setOpen(false)} className="rounded-xl px-3 py-3.5 text-base text-slate-300">
-            Login
+          <Link href="/login?as=customer" onClick={() => setOpen(false)} className="rounded-xl px-3 py-3.5 text-base text-slate-300">
+            Customer login
+          </Link>
+          <Link href="/login?as=admin" onClick={() => setOpen(false)} className="rounded-xl px-3 py-3.5 text-base text-violet-300">
+            ERP login
           </Link>
           <a
             href={`tel:${phone.replace(/\s/g, "")}`}

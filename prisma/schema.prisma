@@ -13,7 +13,7 @@ model User {
   phone        String?  @unique
   passwordHash String?
   name         String
-  role String @default("CUSTOMER")
+  role         String   @default("CUSTOMER")
   avatarUrl    String?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -21,34 +21,45 @@ model User {
 
   customerProfile CustomerProfile?
   employeeProfile EmployeeProfile?
-  orders          Order[]           @relation("CustomerOrders")
-  assignedOrders  Order[]           @relation("AssignedOrders")
+  orders          Order[]            @relation("CustomerOrders")
+  assignedOrders  Order[]            @relation("AssignedOrders")
+  stageJobs       ProductionStage[]  @relation("StageAssignee")
   tickets         SupportTicket[]
   quotes          Quote[]
   addresses       Address[]
   wishlist        WishlistItem[]
   notifications   Notification[]
   auditLogs       AuditLog[]
+  attendance      Attendance[]
+  leaveRequests   LeaveRequest[]
+  salarySlips     SalarySlip[]
+  expensesCreated Expense[]          @relation("ExpenseCreator")
+  crmNotes        CrmNote[]
 }
 
 model CustomerProfile {
-  id           String  @id @default(cuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  companyName  String?
-  gstNumber    String?
-  walletBalance Float  @default(0)
-  rewardPoints Int     @default(0)
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName   String?
+  gstNumber     String?
+  walletBalance Float   @default(0)
+  rewardPoints  Int     @default(0)
 }
 
 model EmployeeProfile {
-  id         String  @id @default(cuid())
-  userId     String  @unique
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  department String?
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department  String?
   designation String?
-  salary     Float?
-  joinDate   DateTime?
+  salary      Float     @default(0)
+  joinDate    DateTime?
+  pfNumber    String?
+  esiNumber   String?
+  bankName    String?
+  bankAccount String?
+  ifsc        String?
 }
 
 model Address {
@@ -247,17 +258,18 @@ model Industry {
 }
 
 model Lead {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
   phone     String
   email     String?
   service   String?
   message   String
-  source    String   @default("website")
-  status    String   @default("new")
+  source    String    @default("website")
+  status    String    @default("new")
   notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  crmNotes  CrmNote[]
 }
 
 model Quote {
@@ -309,6 +321,7 @@ model Order {
   payments        Payment[]
   statusHistory   OrderStatusLog[]
   invoice         Invoice?
+  stages          ProductionStage[]
 }
 
 model OrderStatusLog {
@@ -381,25 +394,178 @@ model InventoryItem {
   id           String   @id @default(cuid())
   name         String
   sku          String?  @unique
+  barcode      String?
   category     String
+  warehouse    String   @default("Main")
   unit         String   @default("pcs")
   quantity     Float    @default(0)
   reorderLevel Float    @default(10)
   unitCost     Float    @default(0)
-  supplier     String?
+  supplierId   String?
+  supplier     Supplier? @relation(fields: [supplierId], references: [id])
   updatedAt    DateTime @updatedAt
   createdAt    DateTime @default(now())
+  adjustments  StockAdjustment[]
+}
+
+model StockAdjustment {
+  id        String        @id @default(cuid())
+  itemId    String
+  item      InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  delta     Float
+  reason    String
+  createdAt DateTime      @default(now())
+}
+
+model Supplier {
+  id          String          @id @default(cuid())
+  name        String
+  phone       String?
+  email       String?
+  gst         String?
+  address     String?
+  notes       String?
+  createdAt   DateTime        @default(now())
+  items       InventoryItem[]
+  purchases   PurchaseOrder[]
+  expenses    Expense[]
+}
+
+model PurchaseOrder {
+  id            String   @id @default(cuid())
+  poNumber      String   @unique
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id])
+  status        String   @default("DRAFT")
+  total         Float    @default(0)
+  notes         String?
+  orderedAt     DateTime @default(now())
+  receivedAt    DateTime?
+  createdAt     DateTime @default(now())
 }
 
 model Expense {
+  id            String   @id @default(cuid())
+  title         String
+  category      String
+  amount        Float
+  expenseDate   DateTime @default(now())
+  vendorName    String?
+  supplierId    String?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  paymentMethod String   @default("CASH")
+  bankName      String?
+  upiRef        String?
+  referenceNo   String?
+  billNumber    String?
+  gstAmount     Float    @default(0)
+  gstNumber     String?
+  status        String   @default("PAID")
+  description   String?
+  proofUrl      String?
+  proofName     String?
+  ocrRaw        String?
+  createdById   String?
+  createdBy     User?    @relation("ExpenseCreator", fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model BankAccount {
+  id        String   @id @default(cuid())
+  name      String
+  bankName  String
+  accountNo String
+  ifsc      String?
+  balance   Float    @default(0)
+  isActive  Boolean  @default(true)
+}
+
+model Attendance {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  status     String   @default("PRESENT")
+  lateMins   Int      @default(0)
+  notes      String?
+  lat        Float?
+  lng        Float?
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model LeaveRequest {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromDate  DateTime
+  toDate    DateTime
+  type      String   @default("CASUAL")
+  reason    String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model SalarySlip {
   id          String   @id @default(cuid())
-  title       String
-  category    String
-  amount      Float
-  paidVia     String   @default("CASH")
-  note        String?
-  spentAt     DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month       Int
+  year        Int
+  basic       Float
+  overtime    Float    @default(0)
+  bonus       Float    @default(0)
+  advance     Float    @default(0)
+  deduction   Float    @default(0)
+  pf          Float    @default(0)
+  esi         Float    @default(0)
+  netSalary   Float
+  status      String   @default("DRAFT")
+  paidAt      DateTime?
+  proofUrl    String?
   createdAt   DateTime @default(now())
+
+  @@unique([userId, month, year])
+}
+
+model ProductionStage {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stage        String
+  status       String   @default("PENDING")
+  assigneeId   String?
+  assignee     User?    @relation("StageAssignee", fields: [assigneeId], references: [id])
+  startedAt    DateTime?
+  completedAt  DateTime?
+  notes        String?
+  sortOrder    Int      @default(0)
+}
+
+model CrmNote {
+  id        String   @id @default(cuid())
+  leadId    String?
+  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  type      String   @default("NOTE")
+  body      String
+  remindAt  DateTime?
+  createdAt DateTime @default(now())
+}
+
+model DocumentVault {
+  id        String   @id @default(cuid())
+  title     String
+  category  String
+  fileUrl   String
+  fileName  String?
+  relatedTo String?
+  createdAt DateTime @default(now())
 }
 
 model AuditLog {

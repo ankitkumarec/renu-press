@@ -2,16 +2,11 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
+import type { AppRole } from "./roles";
 
 const COOKIE = "rp_session";
 
-export type Role =
-  | "SUPER_ADMIN"
-  | "ADMIN"
-  | "MANAGER"
-  | "EMPLOYEE"
-  | "DESIGNER"
-  | "CUSTOMER";
+export type Role = AppRole;
 
 function secret() {
   return new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret");

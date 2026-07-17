@@ -429,8 +429,134 @@ async function main() {
     });
   }
 
+  // --- ERP seed: staff, inventory, suppliers, sample order ---
+  const staffPass = await bcrypt.hash("Staff@123", 12);
+  const staff = await prisma.user.upsert({
+    where: { email: "staff@renupress.in" },
+    update: {},
+    create: {
+      email: "staff@renupress.in",
+      phone: "9988776655",
+      name: "Om",
+      passwordHash: staffPass,
+      role: "EMPLOYEE",
+      employeeProfile: {
+        create: {
+          department: "Production",
+          designation: "Operations Head",
+          salary: 28000,
+          joinDate: new Date("2022-04-01"),
+        },
+      },
+    },
+  });
+
+  const supplier = await prisma.supplier.upsert({
+    where: { id: "seed-supplier-1" },
+    update: {},
+    create: {
+      id: "seed-supplier-1",
+      name: "Bihar Paper Traders",
+      phone: "9123400001",
+      gst: "10AABCU9603R1ZM",
+      address: "Patna wholesale market",
+    },
+  });
+
+  const invSeed = [
+    { name: "Art Paper 300 GSM", sku: "PAP-300", category: "Paper", quantity: 120, reorderLevel: 40, unitCost: 45 },
+    { name: "Flex Banner Roll", sku: "FLX-01", category: "Flex", quantity: 8, reorderLevel: 10, unitCost: 1200 },
+    { name: "Vinyl Glossy", sku: "VIN-G", category: "Vinyl", quantity: 15, reorderLevel: 5, unitCost: 800 },
+    { name: "Offset Black Ink", sku: "INK-BK", category: "Ink", quantity: 3, reorderLevel: 5, unitCost: 950 },
+    { name: "Photo Frame 8x10", sku: "FR-810", category: "Frames", quantity: 40, reorderLevel: 15, unitCost: 60 },
+    { name: "White Mug Blank", sku: "MUG-W", category: "Mug Stock", quantity: 200, reorderLevel: 50, unitCost: 35 },
+    { name: "Round Neck Tee M", sku: "TEE-M", category: "T-Shirt Stock", quantity: 60, reorderLevel: 20, unitCost: 120 },
+    { name: "Baseball Cap", sku: "CAP-01", category: "Caps", quantity: 25, reorderLevel: 10, unitCost: 90 },
+  ];
+  for (const row of invSeed) {
+    await prisma.inventoryItem.upsert({
+      where: { sku: row.sku },
+      update: { quantity: row.quantity, reorderLevel: row.reorderLevel },
+      create: {
+        ...row,
+        unit: "pcs",
+        warehouse: "Main",
+        supplierId: supplier.id,
+        barcode: `RP${row.sku}`,
+      },
+    });
+  }
+
+  await prisma.expense.create({
+    data: {
+      title: "Ink purchase — demo",
+      category: "Ink & Chemicals",
+      amount: 4500,
+      vendorName: "Bihar Paper Traders",
+      paymentMethod: "UPI",
+      upiRef: "UPI123456789012",
+      billNumber: "INV-DEMO-01",
+      description: "Seed expense with proof-ready fields",
+      status: "PAID",
+      createdById: (
+        await prisma.user.findUnique({ where: { email: "admin@renupress.in" } })
+      )?.id,
+    },
+  });
+
+  const customer = await prisma.user.findUnique({ where: { email: "customer@example.com" } });
+  if (customer) {
+    const existing = await prisma.order.findFirst({ where: { orderNumber: "RP-2026-0001" } });
+    if (!existing) {
+      const order = await prisma.order.create({
+        data: {
+          orderNumber: "RP-2026-0001",
+          customerId: customer.id,
+          assignedToId: staff.id,
+          serviceName: "Flex Banner Printing",
+          size: "8x4 ft",
+          quantity: 2,
+          status: "PRINTING",
+          subtotal: 2400,
+          tax: 432,
+          total: 2832,
+          advancePaid: 1000,
+          paymentStatus: "PARTIAL",
+          trackingCode: "TRK-RP-001",
+        },
+      });
+      const stages = ["DESIGN", "APPROVAL", "PRINTING", "LAMINATION", "CUTTING", "PACKING", "DISPATCH", "DELIVERY"];
+      for (let i = 0; i < stages.length; i++) {
+        await prisma.productionStage.create({
+          data: {
+            orderId: order.id,
+            stage: stages[i],
+            status: i < 2 ? "DONE" : i === 2 ? "ACTIVE" : "PENDING",
+            assigneeId: i <= 2 ? staff.id : null,
+            sortOrder: i,
+          },
+        });
+      }
+      await prisma.invoice.create({
+        data: {
+          invoiceNumber: "INV-RP-0001",
+          orderId: order.id,
+          amount: 2400,
+          tax: 432,
+          total: 2832,
+        },
+      });
+    }
+    await prisma.customerProfile.update({
+      where: { userId: customer.id },
+      data: { walletBalance: 500, rewardPoints: 120 },
+    });
+  }
+
   console.log("RENU PRESS seed complete.");
-  console.log("Admin: admin@renupress.in / Renu@Admin2026");
+  console.log("Admin ERP: admin@renupress.in / Renu@Admin2026 → /erp");
+  console.log("Staff:     staff@renupress.in / Staff@123 → /staff");
+  console.log("Customer:  customer@example.com / Customer@123 → /portal");
 }
 
 main()

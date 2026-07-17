@@ -103,8 +103,8 @@ export function Footer({ settings }: { settings: SiteSettings }) {
             <Link href="/terms" className="hover:text-slate-300">
               Terms
             </Link>
-            <Link href="/admin" className="hover:text-orange-300">
-              Admin
+            <Link href="/login?as=admin" className="hover:text-orange-300">
+              ERP Login
             </Link>
           </span>
         </div>
