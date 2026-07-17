@@ -45,6 +45,14 @@ const EMOJIS = ["👍", "🙏", "😊", "📦", "🎨", "OK", "✅"];
 /** Bump key when welcome UX changes so users get fresh greeting */
 const SESSION_KEY = "rp_support_session_v3";
 
+/** Express Support Gateway (Ollama path). Empty = Next.js /api/support */
+const SUPPORT_API = (process.env.NEXT_PUBLIC_SUPPORT_API_URL || "").replace(/\/$/, "");
+
+function supportUrl(path: string) {
+  if (SUPPORT_API) return `${SUPPORT_API}${path}`;
+  return path;
+}
+
 export function SupportDeskWidget({
   defaultOpen = false,
   embedded = false,
@@ -81,7 +89,7 @@ export function SupportDeskWidget({
     setBooting(true);
     try {
       const stored = typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null;
-      const res = await fetch("/api/support/session", {
+      const res = await fetch(supportUrl("/api/support/session"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: stored }),
@@ -122,7 +130,7 @@ export function SupportDeskWidget({
     setBusy(true);
     setTyping(true);
     try {
-      const res = await fetch("/api/support/chat", {
+      const res = await fetch(supportUrl("/api/support/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, message: text.trim() }),
@@ -188,7 +196,7 @@ export function SupportDeskWidget({
       const fd = new FormData();
       fd.set("sessionId", sessionId);
       fd.set("file", file);
-      const res = await fetch("/api/support/upload", { method: "POST", body: fd });
+      const res = await fetch(supportUrl("/api/support/upload"), { method: "POST", body: fd });
       const data = await res.json();
       if (data.ok) {
         const meta =

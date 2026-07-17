@@ -4,8 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
+    "dev:gateway": "npm --prefix server run dev",
+    "dev:all": "npm run dev:gateway",
     "build": "next build",
     "start": "next start -p 3000",
+    "start:gateway": "npm --prefix server run start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

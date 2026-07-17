@@ -740,3 +740,18 @@ model CareerJob {
   createdAt   DateTime @default(now())
 }
 
+/// Product / FAQ knowledge for retrieval (pgvector-ready; store embedding as JSON floats if extension off)
+model KnowledgeChunk {
+  id        String   @id @default(cuid())
+  kind      String   @default("product")
+  title     String
+  content   String
+  metadata  String?
+  /// JSON array of floats — optional local embedding; use pgvector migration for native vector search
+  embedding String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+}
+
