@@ -28,15 +28,17 @@ export function MarqueeClients() {
   ];
   const row = [...brands, ...brands];
   return (
-    <section className="relative border-y border-white/10 bg-[#050a14] py-8 overflow-hidden">
-      <p className="mb-4 text-center text-[11px] font-bold tracking-[0.28em] text-slate-500 uppercase">Trusted clients & industries</p>
-      <div className="marquee-track gap-4 px-4">
+    <section className="relative overflow-hidden border-y border-white/10 bg-[#050a14] py-5 sm:py-8">
+      <p className="mb-3 px-3 text-center text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase sm:mb-4 sm:text-[11px] sm:tracking-[0.28em]">
+        Trusted clients & industries
+      </p>
+      <div className="marquee-track gap-2 px-3 sm:gap-4 sm:px-4">
         {row.map((b, i) => (
           <span
             key={b + i}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-gradient-to-r from-white/5 to-white/[0.02] px-5 py-2.5 text-sm font-bold text-slate-200"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-gradient-to-r from-white/5 to-white/[0.02] px-3 py-2 text-xs font-bold text-slate-200 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
           >
-            <Building2 className="h-4 w-4 text-orange-400" />
+            <Building2 className="h-3.5 w-3.5 text-orange-400 sm:h-4 sm:w-4" />
             {b}
           </span>
         ))}
@@ -352,16 +354,16 @@ export function TeamAwardsStrip() {
           </p>
         </div>
 
-        <div className="mt-10 grid gap-5 md:grid-cols-2">
+        <div className="mt-6 grid gap-4 sm:mt-10 sm:gap-5 md:grid-cols-2">
           {leaders.map((p) => (
             <article
               key={p.name}
-              className="group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-6 shadow-xl transition hover:-translate-y-1 sm:p-8"
+              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl transition hover:-translate-y-1 sm:rounded-[1.75rem] sm:p-8"
             >
               <div className={`absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br ${p.gradient} opacity-30 blur-2xl`} />
-              <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start">
+              <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
                 <div
-                  className={`grid h-24 w-24 shrink-0 place-items-center rounded-3xl bg-gradient-to-br ${p.gradient} text-2xl font-black text-white shadow-lg`}
+                  className={`grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-lg font-black text-white shadow-lg sm:h-24 sm:w-24 sm:rounded-3xl sm:text-2xl ${p.gradient}`}
                 >
                   {p.name
                     .split(" ")
@@ -369,13 +371,15 @@ export function TeamAwardsStrip() {
                     .join("")
                     .slice(0, 2)}
                 </div>
-                <div>
-                  <p className="text-[11px] font-bold tracking-[0.18em] text-cyan-300 uppercase">{p.role}</p>
-                  <h3 className="font-display mt-1 text-2xl font-black text-white">{p.name}</h3>
-                  <p className="mt-0.5 text-sm font-semibold text-orange-200/90">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold tracking-[0.14em] text-cyan-300 uppercase sm:text-[11px] sm:tracking-[0.18em]">
+                    {p.role}
+                  </p>
+                  <h3 className="font-display mt-1 text-xl font-black text-white sm:text-2xl">{p.name}</h3>
+                  <p className="mt-0.5 text-xs font-semibold text-orange-200/90 sm:text-sm">
                     {p.nameHi} · {p.roleHi}
                   </p>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-400">{p.bio}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-400 sm:mt-3">{p.bio}</p>
                 </div>
               </div>
             </article>
@@ -414,42 +418,48 @@ export function TeamAwardsStrip() {
 
 export function QuoteCalculatorCta() {
   return (
-    <section className="relative overflow-hidden py-16 sm:py-20">
+    <section className="relative overflow-hidden py-10 sm:py-16 md:py-20">
       <div className="absolute inset-0 bg-[#050a14]" />
-      <div className="blob left-1/4 top-0 h-72 w-72 bg-orange-500/40" />
-      <div className="blob right-1/4 bottom-0 h-72 w-72 bg-blue-600/40" />
+      <div className="blob left-1/4 top-0 hidden h-72 w-72 bg-orange-500/40 sm:block" />
+      <div className="blob right-1/4 bottom-0 hidden h-72 w-72 bg-blue-600/40 sm:block" />
       <div className="container-wide relative">
-        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-[#12203a] via-[#1e1b4b] to-[#7c2d12] p-8 shadow-2xl sm:p-12">
-          <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#12203a] via-[#1e1b4b] to-[#7c2d12] p-5 shadow-2xl sm:rounded-[2rem] sm:p-12">
+          <div className="grid gap-6 lg:grid-cols-2 lg:items-center lg:gap-8">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-orange-200">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold text-orange-200 sm:text-xs">
                 <Calculator className="h-3.5 w-3.5" /> Quote calculator
               </div>
-              <h2 className="font-display mt-4 text-3xl font-black text-white sm:text-5xl">
+              <h2 className="font-display mt-3 text-2xl font-black text-white sm:mt-4 sm:text-5xl">
                 Size × material × qty = clear estimate
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-slate-300 sm:text-base">
-                Tell us product, size and deadline. We reply with material options and a firm range — WhatsApp or form.
+              <p className="mt-3 text-sm leading-relaxed text-slate-300 sm:mt-4 sm:text-base">
+                Tell us product, size and deadline. We reply with material options and a firm range.
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/quote" className="rounded-full bg-gradient-to-r from-orange-500 to-pink-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/30">
+              <div className="mt-5 flex flex-col gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:gap-3">
+                <Link
+                  href="/quote"
+                  className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-pink-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 sm:w-auto"
+                >
                   Open quote form
                 </Link>
-                <Link href="/order" className="rounded-full border border-white/20 px-6 py-3 text-sm font-bold text-white">
+                <Link
+                  href="/order"
+                  className="inline-flex w-full items-center justify-center rounded-full border border-white/20 px-6 py-3.5 text-sm font-bold text-white sm:w-auto"
+                >
                   Book order
                 </Link>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {[
                 ["Flex banner", "₹ / sq.ft"],
                 ["Visiting cards", "from ₹299"],
                 ["ID cards", "bulk rates"],
                 ["LED boards", "custom"],
               ].map(([a, b]) => (
-                <div key={a} className="rounded-2xl border border-white/15 bg-black/20 p-4 backdrop-blur">
-                  <div className="text-sm font-bold text-white">{a}</div>
-                  <div className="mt-1 text-xs text-cyan-300">{b}</div>
+                <div key={a} className="rounded-xl border border-white/15 bg-black/20 p-3 backdrop-blur sm:rounded-2xl sm:p-4">
+                  <div className="text-xs font-bold text-white sm:text-sm">{a}</div>
+                  <div className="mt-1 text-[10px] text-cyan-300 sm:text-xs">{b}</div>
                 </div>
               ))}
             </div>

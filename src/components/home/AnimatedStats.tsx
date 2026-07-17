@@ -100,16 +100,16 @@ function StatCard({ stat, delay }: { stat: Stat; delay: number }) {
       className="group relative"
     >
       <div className={cn("absolute -inset-px rounded-[1.6rem] bg-gradient-to-br opacity-70 blur-[1px] transition group-hover:opacity-100", stat.gradient)} />
-      <div className="relative h-full overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0c1428]/90 p-5 shadow-xl shadow-black/30 backdrop-blur-xl transition duration-300 group-hover:-translate-y-2 group-hover:shadow-2xl sm:p-6">
-        <div className={cn("mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-lg", stat.gradient)}>
-          <Icon className="h-6 w-6" />
+      <div className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-[#0c1428]/90 p-3.5 shadow-xl shadow-black/30 backdrop-blur-xl transition duration-300 group-hover:-translate-y-1 group-hover:shadow-2xl sm:rounded-[1.5rem] sm:p-6">
+        <div className={cn("mb-2.5 grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br text-white shadow-lg sm:mb-4 sm:h-12 sm:w-12 sm:rounded-2xl", stat.gradient)}>
+          <Icon className="h-4 w-4 sm:h-6 sm:w-6" />
         </div>
-        <div className="font-display text-3xl font-black tracking-tight text-white tabular-nums sm:text-4xl">
+        <div className="font-display text-xl font-black tracking-tight text-white tabular-nums sm:text-4xl">
           {count.toLocaleString("en-IN")}
           <span className="bg-gradient-to-r from-orange-300 to-cyan-300 bg-clip-text text-transparent">{stat.suffix}</span>
         </div>
-        <div className="mt-2 text-sm font-bold text-white">{stat.label}</div>
-        <p className="mt-1 text-xs leading-relaxed text-slate-400">{stat.desc}</p>
+        <div className="mt-1 text-[11px] font-bold leading-snug text-white sm:mt-2 sm:text-sm">{stat.label}</div>
+        <p className="mt-0.5 hidden text-xs leading-relaxed text-slate-400 sm:mt-1 sm:block">{stat.desc}</p>
         <div className={cn("pointer-events-none absolute -right-6 -bottom-6 h-24 w-24 rounded-full bg-gradient-to-br opacity-20 blur-2xl transition group-hover:opacity-40", stat.gradient)} />
       </div>
     </motion.div>
@@ -120,19 +120,21 @@ export function AnimatedStats({ experienceYears = 12 }: { experienceYears?: numb
   const stats = STATS.map((s) => (s.label.includes("Years") ? { ...s, value: experienceYears } : s));
 
   return (
-    <section className="relative overflow-hidden py-16 sm:py-20">
-      <div className="blob top-10 left-10 h-40 w-40 bg-orange-500/40" />
-      <div className="blob right-10 bottom-10 h-48 w-48 bg-blue-600/30" style={{ animationDelay: "2s" }} />
+    <section className="relative overflow-hidden py-10 sm:py-16 md:py-20">
+      <div className="blob top-10 left-10 hidden h-40 w-40 bg-orange-500/40 sm:block" />
+      <div className="blob right-10 bottom-10 hidden h-48 w-48 bg-blue-600/30 sm:block" style={{ animationDelay: "2s" }} />
       <div className="container-wide relative">
-        <div className="mb-10 max-w-2xl">
-          <p className="text-xs font-bold tracking-[0.25em] text-orange-400 uppercase">Achievements</p>
-          <h2 className="font-display mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl md:text-5xl">
+        <div className="mb-6 max-w-2xl sm:mb-10">
+          <p className="text-[10px] font-bold tracking-[0.2em] text-orange-400 uppercase sm:text-xs sm:tracking-[0.25em]">
+            Achievements
+          </p>
+          <h2 className="font-display mt-2 text-2xl font-black tracking-tight text-white sm:text-4xl md:text-5xl">
             Numbers that <span className="grad-text">print trust</span>
           </h2>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3">
           {stats.map((s, i) => (
-            <StatCard key={s.label} stat={s} delay={i * 0.07} />
+            <StatCard key={s.label} stat={s} delay={i * 0.05} />
           ))}
         </div>
       </div>

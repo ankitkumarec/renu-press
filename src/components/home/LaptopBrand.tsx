@@ -1,8 +1,8 @@
 /** Laptop mockup with RENU PRESS on the screen */
 export function LaptopBrand() {
   return (
-    <div className="relative mx-auto w-full max-w-lg">
-      <div className="absolute -inset-6 rounded-[2rem] bg-gradient-to-r from-orange-500 via-purple-500 to-cyan-400 opacity-50 blur-2xl" />
+    <div className="relative mx-auto w-full max-w-[min(100%,28rem)] sm:max-w-lg">
+      <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-r from-orange-500 via-purple-500 to-cyan-400 opacity-40 blur-xl sm:-inset-6 sm:opacity-50 sm:blur-2xl" />
 
       {/* Laptop body */}
       <div className="relative">

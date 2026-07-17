@@ -7,15 +7,17 @@ export function Footer({ settings }: { settings: SiteSettings }) {
       <div className="pointer-events-none absolute -top-24 left-1/4 h-64 w-64 rounded-full bg-orange-500/20 blur-3xl" />
       <div className="pointer-events-none absolute right-0 -bottom-20 h-72 w-72 rounded-full bg-blue-600/20 blur-3xl" />
 
-      <div className="container-wide relative grid gap-10 py-16 md:grid-cols-12">
+      <div className="container-wide relative grid gap-8 py-12 sm:gap-10 sm:py-16 md:grid-cols-12">
         <div className="md:col-span-5">
           <div className="inline-flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl grad-brand text-sm font-black text-white shadow-lg shadow-purple-500/30">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl grad-brand text-sm font-black text-white shadow-lg shadow-purple-500/30 sm:h-12 sm:w-12">
               RP
             </span>
             <div>
-              <div className="font-display text-2xl font-bold tracking-tight text-white">{settings.businessName}</div>
-              <div className="text-xs font-semibold tracking-[0.16em] text-orange-300/90 uppercase">Saharsa · Bihar</div>
+              <div className="font-display text-xl font-bold tracking-tight text-white sm:text-2xl">{settings.businessName}</div>
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-orange-300/90 uppercase sm:text-xs sm:tracking-[0.16em]">
+                Saharsa · Bihar
+              </div>
             </div>
           </div>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">{settings.tagline}</p>

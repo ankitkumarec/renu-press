@@ -39,16 +39,20 @@ export default async function HomePage() {
       <MarqueeClients />
 
       {/* Intro band — colourful split */}
-      <section className="relative overflow-hidden py-16 sm:py-20">
+      <section className="relative overflow-hidden py-10 sm:py-16 md:py-20">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#9a3412]" />
-        <div className="container-wide relative grid items-center gap-10 lg:grid-cols-2">
-          <div>
-            <p className="text-xs font-bold tracking-[0.25em] text-orange-300 uppercase">Company introduction</p>
-            <h2 className="font-display mt-3 text-3xl font-black text-white sm:text-5xl text-balance">{settings.aboutTitle}</h2>
-            <p className="mt-5 text-base leading-relaxed text-slate-300">{settings.aboutBody}</p>
-            <p className="mt-4 text-sm leading-relaxed text-slate-400">{settings.storyBody}</p>
+        <div className="container-wide relative grid items-center gap-8 lg:grid-cols-2 lg:gap-10">
+          <div className="order-2 lg:order-1">
+            <p className="text-[10px] font-bold tracking-[0.2em] text-orange-300 uppercase sm:text-xs sm:tracking-[0.25em]">
+              Company introduction
+            </p>
+            <h2 className="font-display mt-2 text-2xl font-black text-white text-balance sm:mt-3 sm:text-5xl">
+              {settings.aboutTitle}
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-300 sm:mt-5 sm:text-base">{settings.aboutBody}</p>
+            <p className="mt-3 text-sm leading-relaxed text-slate-400 sm:mt-4">{settings.storyBody}</p>
           </div>
-          <div className="relative flex items-center justify-center py-4">
+          <div className="relative order-1 flex items-center justify-center px-1 py-2 lg:order-2 lg:py-4">
             <LaptopBrand />
           </div>
         </div>

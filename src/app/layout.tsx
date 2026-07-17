@@ -22,8 +22,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-dvh antialiased">{children}</body>
+    <html lang="en" className="overflow-x-hidden">
+      <body className="min-h-dvh overflow-x-hidden antialiased">{children}</body>
     </html>
   );
 }

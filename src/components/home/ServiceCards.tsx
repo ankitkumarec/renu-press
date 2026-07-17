@@ -105,29 +105,31 @@ function imageForService(name: string, index: number) {
 
 export function ServiceCards({ services }: { services: Service[] }) {
   return (
-    <section className="relative overflow-hidden py-16 sm:py-22">
+    <section className="relative overflow-hidden py-10 sm:py-16 md:py-20">
       <div className="absolute inset-0 section-navy" />
-      <div className="blob top-0 right-0 h-72 w-72 bg-purple-600/40" />
+      <div className="blob top-0 right-0 hidden h-72 w-72 bg-purple-600/40 sm:block" />
       <div className="container-wide relative">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-bold tracking-[0.25em] text-cyan-300 uppercase">Services</p>
-            <h2 className="font-display mt-2 max-w-xl text-3xl font-black tracking-tight text-white sm:text-5xl">
+            <p className="text-[10px] font-bold tracking-[0.2em] text-cyan-300 uppercase sm:text-xs sm:tracking-[0.25em]">
+              Services
+            </p>
+            <h2 className="font-display mt-2 max-w-xl text-2xl font-black tracking-tight text-white sm:text-5xl">
               Premium print <span className="grad-text">catalogue</span>
             </h2>
-            <p className="mt-3 max-w-lg text-sm text-slate-400">
-              Not a plain list — every line is production-ready with samples, quotes and colour control.
+            <p className="mt-2 max-w-lg text-sm text-slate-400 sm:mt-3">
+              Production-ready lines with samples, quotes and colour control.
             </p>
           </div>
           <Link
             href="/services"
-            className="rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-white/10"
+            className="inline-flex w-fit rounded-full border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-bold text-white transition active:bg-white/10 sm:px-5"
           >
             View all 70+ →
           </Link>
         </div>
 
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-10 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
           {services.map((s, i) => {
             const Icon = ICONS[i % ICONS.length];
             const grad = GRADS[i % GRADS.length];
@@ -161,22 +163,22 @@ export function ServiceCards({ services }: { services: Service[] }) {
                   <div className="p-4 sm:p-5">
                     <h3 className="font-display text-lg font-bold tracking-tight text-white">{s.name}</h3>
                     <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-400">{s.description}</p>
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
                       <Link
                         href={`/services/${s.slug}`}
-                        className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-white/20"
+                        className="inline-flex min-h-9 items-center gap-1 rounded-full bg-white/10 px-3 py-2 text-[11px] font-bold text-white transition active:bg-white/20"
                       >
                         Learn more <ArrowUpRight className="h-3 w-3" />
                       </Link>
                       <Link
                         href={`/quote?service=${encodeURIComponent(s.name)}`}
-                        className="rounded-full bg-gradient-to-r from-orange-500 to-pink-500 px-3 py-1.5 text-[11px] font-bold text-white shadow-md shadow-orange-500/20"
+                        className="inline-flex min-h-9 items-center rounded-full bg-gradient-to-r from-orange-500 to-pink-500 px-3 py-2 text-[11px] font-bold text-white shadow-md shadow-orange-500/20"
                       >
                         Get quote
                       </Link>
                       <Link
                         href="/portfolio"
-                        className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] font-bold text-slate-300 hover:text-white"
+                        className="inline-flex min-h-9 items-center rounded-full border border-white/15 px-3 py-2 text-[11px] font-bold text-slate-300"
                       >
                         Samples
                       </Link>
