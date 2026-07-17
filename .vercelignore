@@ -1,0 +1,6 @@
+server
+server/**
+*.md
+scripts
+prisma/dev.db
+tsconfig.tsbuildinfo
