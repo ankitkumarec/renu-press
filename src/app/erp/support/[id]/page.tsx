@@ -150,7 +150,7 @@ export default async function ErpSupportDetailPage({
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-[#0c1220] p-5">
-            <h2 className="text-sm font-bold text-white">Files gallery</h2>
+            <h2 className="text-sm font-bold text-white">Files + Print QC</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               {conv.files.map((f) => (
                 <div key={f.id} className="overflow-hidden rounded-xl border border-white/10 bg-black/30">
@@ -173,6 +173,16 @@ export default async function ErpSupportDetailPage({
                     <div className="text-[10px] text-slate-500">
                       {f.category} · {(f.sizeBytes / 1024).toFixed(0)} KB
                     </div>
+                    {f.printScore != null ? (
+                      <div className="mt-1 text-[11px] font-bold text-cyan-300">
+                        QC {f.printScore}% · {f.printGrade}
+                        {f.inspectionId ? (
+                          <Link href={`/erp/artwork/${f.inspectionId}`} className="ml-1 text-violet-400 underline">
+                            report
+                          </Link>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {f.storageData ? (
                       <a
                         href={f.storageData}

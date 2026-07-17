@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseRecMetadata, ProductCards } from "./ProductCards";
+import { parsePrintReport, PrintReadinessCard } from "./PrintReadinessCard";
 
 type Msg = {
   id: string;
@@ -177,14 +178,25 @@ export function SupportDeskWidget({
       const res = await fetch("/api/support/upload", { method: "POST", body: fd });
       const data = await res.json();
       if (data.ok) {
+        const meta =
+          data.printReport
+            ? JSON.stringify({
+                type: "print_readiness_report",
+                report: data.printReport,
+                inspectionId: data.inspectionId,
+                recommendation: data.recommendation,
+              })
+            : data.recommendation
+              ? JSON.stringify(data.recommendation)
+              : null;
         setMessages((m) => [
           ...m,
           {
             id: `ar_${Date.now()}`,
             role: "agent",
             content: data.reply,
-            messageType: data.recommendation ? "recommendations" : "text",
-            metadata: data.recommendation ? JSON.stringify(data.recommendation) : null,
+            messageType: data.printReport ? "print_report" : data.recommendation ? "recommendations" : "text",
+            metadata: meta,
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -324,7 +336,17 @@ export function SupportDeskWidget({
               {messages.map((m) => {
                 const mine = m.role === "customer";
                 const system = m.role === "system" || m.role === "admin";
-                const rec = !mine ? parseRecMetadata(m.metadata) : null;
+                const printR = !mine ? parsePrintReport(m.metadata) : null;
+                let rec = !mine && !printR ? parseRecMetadata(m.metadata) : null;
+                // recommendation may be nested inside print report meta
+                if (!rec && m.metadata) {
+                  try {
+                    const j = JSON.parse(m.metadata) as { recommendation?: unknown };
+                    if (j.recommendation) rec = parseRecMetadata(JSON.stringify(j.recommendation));
+                  } catch {
+                    /* ignore */
+                  }
+                }
                 return (
                   <motion.div
                     key={m.id}
@@ -335,7 +357,7 @@ export function SupportDeskWidget({
                     <div
                       className={cn(
                         "max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm",
-                        rec ? "sm:max-w-[100%]" : "whitespace-pre-wrap",
+                        printR || rec ? "sm:max-w-[100%]" : "whitespace-pre-wrap",
                         mine
                           ? "rounded-br-md bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white whitespace-pre-wrap"
                           : system
@@ -349,7 +371,7 @@ export function SupportDeskWidget({
                     >
                       {!mine && !system ? (
                         <div className={cn("mb-1 text-[10px] font-bold tracking-wide uppercase", dark ? "text-violet-300" : "text-violet-600")}>
-                          Support Team · Visual consultant
+                          Support Team · Pre-press QC
                         </div>
                       ) : null}
                       {m.messageType === "file" || m.messageType === "image" ? (
@@ -357,16 +379,27 @@ export function SupportDeskWidget({
                           {m.messageType === "image" ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
                         </div>
                       ) : null}
-                      {rec ? (
+                      {printR ? (
+                        <>
+                          <PrintReadinessCard
+                            report={printR}
+                            dark={dark}
+                            onFix={(_id, label) =>
+                              void sendText(
+                                `Please help with: ${label}. Original file rakhna — improved copy chahiye.`,
+                              )
+                            }
+                          />
+                          {rec ? (
+                            <ProductCards data={rec} dark={dark} onSelect={(name) => void sendText(name)} />
+                          ) : null}
+                        </>
+                      ) : rec ? (
                         <>
                           <p className="whitespace-pre-wrap text-[12px] leading-relaxed opacity-95">
                             {m.content.split("\n").slice(0, 4).join("\n")}
                           </p>
-                          <ProductCards
-                            data={rec}
-                            dark={dark}
-                            onSelect={(name) => void sendText(name)}
-                          />
+                          <ProductCards data={rec} dark={dark} onSelect={(name) => void sendText(name)} />
                         </>
                       ) : (
                         <span className="whitespace-pre-wrap">{m.content}</span>
@@ -426,7 +459,7 @@ export function SupportDeskWidget({
                   ref={fileRef}
                   type="file"
                   className="hidden"
-                  accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,.psd,.ai,.cdr,.svg,.doc,.docx,.zip,.rar,.mp4,.webm,.mp3,.wav,.ogg,.m4a,image/*,application/pdf,audio/*,video/*"
+                  accept=".jpg,.jpeg,.png,.webp,.heic,.bmp,.tif,.tiff,.pdf,.psd,.ai,.eps,.cdr,.svg,.doc,.docx,.zip,.rar,.mp4,.webm,.mp3,.wav,.ogg,.m4a,image/*,application/pdf,audio/*,video/*"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (f) void uploadFile(f);

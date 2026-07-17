@@ -22,12 +22,14 @@ import {
   BarChart3,
   Building2,
   Headphones,
+  ScanSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/erp", label: "Dashboard", icon: LayoutDashboard },
   { href: "/erp/support", label: "Support Desk", icon: Headphones },
+  { href: "/erp/artwork", label: "Artwork QC", icon: ScanSearch },
   { href: "/erp/orders", label: "Orders", icon: ShoppingCart },
   { href: "/erp/production", label: "Production", icon: Factory },
   { href: "/erp/inventory", label: "Inventory", icon: Package },

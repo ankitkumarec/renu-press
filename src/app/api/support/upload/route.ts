@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const buf = Buffer.from(await file.arrayBuffer());
     const mimeType = file.type || "application/octet-stream";
     let dataUrl: string | undefined;
-    // Store small images/PDFs as data URL for admin preview
+    // Store small images/PDFs as data URL for admin preview (copy — original client file untouched)
     if (buf.length <= 2 * 1024 * 1024 && (mimeType.startsWith("image/") || mimeType === "application/pdf")) {
       dataUrl = `data:${mimeType};base64,${buf.toString("base64")}`;
     }
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
       sizeBytes: file.size,
       dataUrl,
       caption,
+      buffer: buf,
     });
 
     return NextResponse.json({
@@ -47,8 +48,12 @@ export async function POST(req: Request) {
         mimeType: result.file.mimeType,
         category: result.file.category,
         sizeBytes: result.file.sizeBytes,
+        printScore: result.file.printScore,
+        printGrade: result.file.printGrade,
       },
       analysis: result.analysis,
+      printReport: result.printReport,
+      inspectionId: result.inspectionId,
       recommendation: result.recommendation,
     });
   } catch (e) {

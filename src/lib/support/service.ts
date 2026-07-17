@@ -16,6 +16,7 @@ import {
   recommendFromImageScene,
   serializeRecommendation,
 } from "./recommend";
+import { formatInspectionChatText, inspectArtwork } from "@/lib/prepress/inspector";
 import { randomBytes } from "crypto";
 
 function sessionId() {
@@ -367,6 +368,8 @@ export async function handleUpload(opts: {
   sizeBytes: number;
   dataUrl?: string;
   caption?: string;
+  /** Raw bytes for pre-press dimension sniffing */
+  buffer?: Buffer | null;
 }) {
   const conv = await prisma.supportConversation.findUnique({ where: { sessionId: opts.sessionId } });
   if (!conv) throw new Error("SESSION_NOT_FOUND");
@@ -376,11 +379,9 @@ export async function handleUpload(opts: {
     throw new Error("FILE_TOO_LARGE");
   }
   if (!ALLOWED_MIME.has(opts.mimeType) && !ALLOWED_EXT.has(ext)) {
-    // allow if extension ok
     if (!ALLOWED_EXT.has(ext)) throw new Error("FILE_TYPE_NOT_ALLOWED");
   }
 
-  // Virus scan hook (no-op ready)
   await virusScanHook({ fileName: opts.fileName, mimeType: opts.mimeType, sizeBytes: opts.sizeBytes });
 
   let storageData: string | null = null;
@@ -395,6 +396,38 @@ export async function handleUpload(opts: {
     userHint: opts.caption,
   });
 
+  // —— Artwork Quality Inspector (pre-press QC) ——
+  const printReport = inspectArtwork({
+    fileName: opts.fileName,
+    mimeType: opts.mimeType,
+    sizeBytes: opts.sizeBytes,
+    buffer: opts.buffer,
+    userHint: opts.caption,
+    productHint: conv.product || undefined,
+  });
+
+  const inspection = await prisma.artworkInspection.create({
+    data: {
+      conversationId: conv.id,
+      fileName: opts.fileName,
+      mimeType: opts.mimeType,
+      sizeBytes: opts.sizeBytes,
+      score: printReport.score,
+      grade: printReport.grade,
+      category: printReport.category,
+      maxPrintSize: printReport.maxPrintSize,
+      colourMode: printReport.colour.mode,
+      resolutionLevel: printReport.resolution.level,
+      warnings: JSON.stringify(printReport.warnings),
+      suggestions: JSON.stringify(printReport.suggestions),
+      suitableProducts: JSON.stringify(
+        printReport.suitableFor.filter((s) => s.ok).map((s) => s.product),
+      ),
+      reportJson: JSON.stringify(printReport),
+      version: 1,
+    },
+  });
+
   const file = await prisma.supportFile.create({
     data: {
       conversationId: conv.id,
@@ -402,10 +435,18 @@ export async function handleUpload(opts: {
       mimeType: opts.mimeType,
       sizeBytes: opts.sizeBytes,
       storageData,
-      analysis: JSON.stringify(analysis),
+      analysis: JSON.stringify({ ...analysis, printScore: printReport.score, printGrade: printReport.grade }),
       category: analysis.category,
       ocrText: analysis.ocrHints.join(" | ") || null,
+      printScore: printReport.score,
+      printGrade: printReport.grade,
+      inspectionId: inspection.id,
     },
+  });
+
+  await prisma.artworkInspection.update({
+    where: { id: inspection.id },
+    data: { supportFileId: file.id },
   });
 
   await prisma.supportMessage.create({
@@ -418,12 +459,18 @@ export async function handleUpload(opts: {
         : opts.mimeType.startsWith("audio/")
           ? "voice"
           : "file",
-      metadata: JSON.stringify({ fileId: file.id, fileName: opts.fileName, mimeType: opts.mimeType }),
+      metadata: JSON.stringify({
+        fileId: file.id,
+        fileName: opts.fileName,
+        mimeType: opts.mimeType,
+        inspectionId: inspection.id,
+      }),
     },
   });
 
   const lang = (conv.language as "hi" | "en" | "hinglish") || "hinglish";
-  const fileReply = buildFileAgentReply(analysis, lang);
+  const qcText = formatInspectionChatText(printReport, lang);
+  const fileReply = `${qcText}\n\n${buildFileAgentReply(analysis, lang)}`;
   const imageRec = recommendFromImageScene(analysis.category, opts.fileName, lang);
   const result = processCustomerMessage(stateFromConv(conv), opts.caption || analysis.category, {
     fileJustUploaded: true,
@@ -432,18 +479,25 @@ export async function handleUpload(opts: {
   });
 
   let reply = result.reply;
-  let meta: string | null = null;
+  // Structured metadata: print report + optional product recommendations
+  let recMeta: Record<string, unknown> | null = null;
   if (result.recommendation) {
     const portfolio = await attachPortfolio(result.recommendation);
-    meta = serializeRecommendation(result.recommendation, portfolio);
-    result.patch.recommendationJson = meta;
-  } else {
-    meta = JSON.stringify({ fileId: file.id, analysis });
+    recMeta = JSON.parse(serializeRecommendation(result.recommendation, portfolio));
+    result.patch.recommendationJson = JSON.stringify(recMeta);
   }
+
+  const meta = JSON.stringify({
+    type: "print_readiness_report",
+    report: printReport,
+    fileId: file.id,
+    inspectionId: inspection.id,
+    recommendation: recMeta,
+  });
 
   if (!result.recommendation) {
     const polished = await polishWithGrok({
-      systemContext: `File: ${opts.fileName} · ${analysis.summary}`,
+      systemContext: `File: ${opts.fileName} · Print score ${printReport.score} · ${analysis.summary}`,
       userMessage: opts.caption || `[file ${opts.fileName}]`,
       draftReply: reply,
     });
@@ -480,10 +534,23 @@ export async function handleUpload(opts: {
       conversationId: conv.id,
       role: "agent",
       content: reply,
-      messageType: result.messageType || "text",
+      messageType: "print_report",
       metadata: meta,
     },
   });
+
+  // Soft admin alert for low scores
+  if (printReport.score < 55) {
+    await prisma.adminAlert.create({
+      data: {
+        type: "ARTWORK_QC",
+        title: `Artwork needs work · ${printReport.score}%`,
+        body: `${opts.fileName} · ${printReport.grade} · ${conv.customerName || "Guest"}`,
+        href: `/erp/artwork/${inspection.id}`,
+        meta: JSON.stringify({ inspectionId: inspection.id, score: printReport.score }),
+      },
+    });
+  }
 
   if (p.readyForHandover) await ensureLeadAndNotify(conv.id);
 
@@ -491,7 +558,9 @@ export async function handleUpload(opts: {
     file,
     reply,
     analysis,
-    recommendation: result.recommendation ? JSON.parse(meta || "{}") : null,
+    printReport,
+    inspectionId: inspection.id,
+    recommendation: recMeta,
   };
 }
 

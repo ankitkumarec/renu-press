@@ -360,10 +360,50 @@ model SupportFile {
   ocrText        String?
   category       String?
   version        Int      @default(1)
+  /// Print readiness score 0–100
+  printScore     Int?
+  printGrade     String?
+  /// Link to latest ArtworkInspection
+  inspectionId   String?
   deleted        Boolean  @default(false)
   createdAt      DateTime @default(now())
+  inspections    ArtworkInspection[]
 
   @@index([conversationId])
+}
+
+/// Pre-press Artwork Quality Inspector — versioned reports (original never modified)
+model ArtworkInspection {
+  id               String   @id @default(cuid())
+  supportFileId    String?
+  supportFile      SupportFile? @relation(fields: [supportFileId], references: [id], onDelete: SetNull)
+  conversationId   String?
+  fileName         String
+  mimeType         String
+  sizeBytes        Int      @default(0)
+  score            Int      @default(0)
+  grade            String   @default("Average")
+  category         String?
+  maxPrintSize     String?
+  colourMode       String?
+  resolutionLevel  String?
+  warnings         String?
+  suggestions      String?
+  suitableProducts String?
+  /// Full PrintReadinessReport JSON
+  reportJson       String
+  /// Optional parent for revision history
+  parentId         String?
+  parent           ArtworkInspection?  @relation("InspectionRevisions", fields: [parentId], references: [id], onDelete: SetNull)
+  revisions        ArtworkInspection[] @relation("InspectionRevisions")
+  version          Int      @default(1)
+  /// Requested optional fixes (JSON array of fix ids)
+  requestedFixes   String?
+  createdAt        DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([score])
+  @@index([createdAt])
 }
 
 model AdminAlert {
