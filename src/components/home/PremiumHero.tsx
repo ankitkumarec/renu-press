@@ -2,7 +2,37 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Play, MapPin } from "lucide-react";
+import { ArrowRight, Play, MapPin, Printer, PanelsTopLeft, Gift } from "lucide-react";
+
+const highlights = [
+  {
+    title: "Offset + Digital",
+    desc: "Colour-true press",
+    href: "/services",
+    icon: Printer,
+    accent: "from-orange-500/25 to-rose-500/10",
+    iconColor: "text-orange-300",
+    ring: "group-hover:border-orange-400/40",
+  },
+  {
+    title: "Outdoor media",
+    desc: "Flex · vinyl · boards",
+    href: "/services",
+    icon: PanelsTopLeft,
+    accent: "from-cyan-500/25 to-blue-500/10",
+    iconColor: "text-cyan-300",
+    ring: "group-hover:border-cyan-400/40",
+  },
+  {
+    title: "Gifts & apparel",
+    desc: "Mugs · tees · trophies",
+    href: "/services",
+    icon: Gift,
+    accent: "from-violet-500/25 to-fuchsia-500/10",
+    iconColor: "text-violet-300",
+    ring: "group-hover:border-violet-400/40",
+  },
+];
 
 export function PremiumHero({
   title,
@@ -73,19 +103,36 @@ export function PremiumHero({
               70+ services →
             </Link>
           </div>
+        </motion.div>
 
-          <div className="mt-6 grid grid-cols-1 gap-3 border-t border-white/10 pt-5 sm:mt-8 sm:grid-cols-3 sm:gap-5 sm:pt-6">
-            {[
-              ["Offset + Digital", "Colour-true press"],
-              ["Outdoor media", "Flex · vinyl · boards"],
-              ["Gifts & apparel", "Mugs · tees · trophies"],
-            ].map(([t, d]) => (
-              <div key={t} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
-                <div className="text-sm font-bold text-white">{t}</div>
-                <div className="text-xs text-slate-400">{d}</div>
+        {/* Service highlights — glass cards (full width, not cramped text row) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          className="mt-8 grid max-w-4xl grid-cols-1 gap-3 sm:mt-10 sm:grid-cols-3 sm:gap-4"
+        >
+          {highlights.map(({ title: t, desc, href, icon: Icon, accent, iconColor, ring }) => (
+            <Link
+              key={t}
+              href={href}
+              className={`group relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/[0.1] hover:shadow-lg hover:shadow-black/20 ${ring}`}
+            >
+              <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accent} opacity-80`} />
+              <div className="relative flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-black/25 shadow-inner">
+                  <Icon className={`h-5 w-5 ${iconColor}`} strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight text-white">
+                    <span className="truncate">{t}</span>
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-white/0 transition-all group-hover:translate-x-0.5 group-hover:text-white/70" />
+                  </div>
+                  <p className="mt-0.5 text-xs leading-snug text-slate-300/90 sm:text-[13px]">{desc}</p>
+                </div>
               </div>
-            ))}
-          </div>
+            </Link>
+          ))}
         </motion.div>
       </div>
     </section>
