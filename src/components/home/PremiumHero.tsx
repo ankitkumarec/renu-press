@@ -105,30 +105,30 @@ export function PremiumHero({
           </div>
         </motion.div>
 
-        {/* Service highlights — glass cards (full width, not cramped text row) */}
+        {/* Service highlights — full container width, equal 3 columns (no right dead space) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-8 grid max-w-4xl grid-cols-1 gap-3 sm:mt-10 sm:grid-cols-3 sm:gap-4"
+          className="mt-8 grid w-full grid-cols-1 gap-3 sm:mt-10 sm:grid-cols-3 sm:gap-4 lg:gap-5"
         >
           {highlights.map(({ title: t, desc, href, icon: Icon, accent, iconColor, ring }) => (
             <Link
               key={t}
               href={href}
-              className={`group relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/[0.1] hover:shadow-lg hover:shadow-black/20 ${ring}`}
+              className={`group relative flex min-h-[5.5rem] w-full items-center overflow-hidden rounded-2xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/[0.1] hover:shadow-lg hover:shadow-black/20 sm:min-h-[6.25rem] sm:p-5 ${ring}`}
             >
               <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accent} opacity-80`} />
-              <div className="relative flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-black/25 shadow-inner">
-                  <Icon className={`h-5 w-5 ${iconColor}`} strokeWidth={1.75} />
+              <div className="relative flex w-full items-center gap-3 sm:gap-3.5">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-black/25 shadow-inner sm:h-12 sm:w-12">
+                  <Icon className={`h-5 w-5 sm:h-5.5 sm:w-5.5 ${iconColor}`} strokeWidth={1.75} />
                 </span>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight text-white">
-                    <span className="truncate">{t}</span>
-                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-white/0 transition-all group-hover:translate-x-0.5 group-hover:text-white/70" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[15px] font-bold tracking-tight text-white sm:text-base">{t}</span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-white/35 transition-all group-hover:translate-x-0.5 group-hover:text-white/80" />
                   </div>
-                  <p className="mt-0.5 text-xs leading-snug text-slate-300/90 sm:text-[13px]">{desc}</p>
+                  <p className="mt-0.5 text-xs leading-snug text-slate-300/95 sm:text-[13px]">{desc}</p>
                 </div>
               </div>
             </Link>
