@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Supplier = {
@@ -12,7 +13,14 @@ type Supplier = {
   totalPurchase: number;
   totalPaid: number;
   due: number;
-  ledger: { id: string; type: string; amount: number; method: string; note: string | null; createdAt: string }[];
+  ledger: {
+    id: string;
+    type: string;
+    amount: number;
+    method: string;
+    note: string | null;
+    createdAt: string;
+  }[];
 };
 
 export function SuppliersManager() {
@@ -101,41 +109,51 @@ export function SuppliersManager() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {list.map((s) => (
           <article key={s.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <h3 className="font-bold">{s.name}</h3>
-            <p className="mt-1 text-xs text-slate-500">
-              {s.phone || "—"} · GST {s.gst || "—"}
-            </p>
-            {s.products && <p className="mt-1 text-xs text-violet-300">Supplies: {s.products}</p>}
-            <p className="mt-2 text-sm text-slate-400 line-clamp-2">{s.address}</p>
-            <div className="mt-3 grid grid-cols-3 gap-1 text-[11px]">
-              <div className="rounded-lg bg-white/5 p-2">
-                <div className="text-slate-500">Purchase</div>
-                <div className="font-bold">₹{s.totalPurchase.toLocaleString("en-IN")}</div>
+            <Link href={`/erp/suppliers/${s.id}`} className="block hover:opacity-95">
+              <h3 className="font-bold">{s.name}</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {s.phone || "—"} · GST {s.gst || "—"}
+              </p>
+              {s.products && <p className="mt-1 text-xs text-violet-300">Supplies: {s.products}</p>}
+              <p className="mt-2 text-sm text-slate-400 line-clamp-2">{s.address}</p>
+              <div className="mt-3 grid grid-cols-3 gap-1 text-[11px]">
+                <div className="rounded-lg bg-white/5 p-2">
+                  <div className="text-slate-500">Purchase</div>
+                  <div className="font-bold">₹{s.totalPurchase.toLocaleString("en-IN")}</div>
+                </div>
+                <div className="rounded-lg bg-white/5 p-2">
+                  <div className="text-slate-500">Paid</div>
+                  <div className="font-bold text-emerald-400">₹{s.totalPaid.toLocaleString("en-IN")}</div>
+                </div>
+                <div className="rounded-lg bg-white/5 p-2">
+                  <div className="text-slate-500">Due</div>
+                  <div className="font-bold text-rose-300">₹{s.due.toLocaleString("en-IN")}</div>
+                </div>
               </div>
-              <div className="rounded-lg bg-white/5 p-2">
-                <div className="text-slate-500">Paid</div>
-                <div className="font-bold text-emerald-400">₹{s.totalPaid.toLocaleString("en-IN")}</div>
-              </div>
-              <div className="rounded-lg bg-white/5 p-2">
-                <div className="text-slate-500">Due</div>
-                <div className="font-bold text-rose-300">₹{s.due.toLocaleString("en-IN")}</div>
-              </div>
-            </div>
+              <p className="mt-2 text-[11px] font-bold text-violet-300">Open full page →</p>
+            </Link>
             <button
               type="button"
               className="mt-2 text-[11px] font-bold text-cyan-400"
               onClick={() => setOpen(open === s.id ? null : s.id)}
             >
-              {open === s.id ? "Hide history" : "History"}
+              {open === s.id ? "Hide quick history" : "Quick history"}
             </button>
             {open === s.id && (
-              <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-[11px] text-slate-400">
+              <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-[11px] text-slate-400">
                 {s.ledger.map((l) => (
-                  <li key={l.id} className="flex justify-between border-b border-white/5 py-1">
-                    <span>
+                  <li key={l.id} className="flex justify-between gap-2 border-b border-white/5 py-1.5">
+                    <span className="min-w-0">
+                      <span className="block text-[10px] text-slate-500">
+                        {new Date(l.createdAt).toLocaleString("en-IN")}
+                      </span>
                       {l.type} · {l.method}
                     </span>
-                    <span className={l.type === "PAYMENT" ? "text-emerald-400" : "text-amber-300"}>
+                    <span
+                      className={`shrink-0 font-bold ${
+                        l.type === "PAYMENT" ? "text-emerald-400" : "text-amber-300"
+                      }`}
+                    >
                       ₹{l.amount.toLocaleString("en-IN")}
                     </span>
                   </li>

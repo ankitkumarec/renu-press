@@ -4,11 +4,36 @@ import { getSession } from "@/lib/auth";
 import { isErpRole } from "@/lib/roles";
 import { z } from "zod";
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getSession();
   if (!session || !isErpRole(session.role)) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
+  const id = new URL(req.url).searchParams.get("id");
+
+  if (id) {
+    const s = await prisma.supplier.findUnique({
+      where: { id },
+      include: {
+        ledger: { orderBy: { createdAt: "desc" }, take: 500 },
+        purchases: { orderBy: { orderedAt: "desc" }, take: 100 },
+        items: { take: 50 },
+        _count: { select: { items: true, purchases: true } },
+      },
+    });
+    if (!s) return NextResponse.json({ ok: false, message: "Not found" }, { status: 404 });
+    let purchase = 0;
+    let paid = 0;
+    for (const l of s.ledger) {
+      if (l.type === "PURCHASE") purchase += l.amount;
+      if (l.type === "PAYMENT") paid += l.amount;
+    }
+    return NextResponse.json({
+      ok: true,
+      supplier: { ...s, totalPurchase: purchase, totalPaid: paid, due: purchase - paid },
+    });
+  }
+
   const suppliers = await prisma.supplier.findMany({
     orderBy: { name: "asc" },
     include: {

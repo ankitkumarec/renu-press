@@ -31,6 +31,10 @@ export function HrStaffDetail({ staffId }: { staffId: string }) {
   const [staff, setStaff] = useState<Staff | null>(null);
   const [pay, setPay] = useState({ type: "ADVANCE", amount: 0, method: "CASH", note: "" });
   const [attDate, setAttDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [month, setMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [msg, setMsg] = useState("");
 
   async function load() {
@@ -91,7 +95,26 @@ export function HrStaffDetail({ staffId }: { staffId: string }) {
   const totalSalaryPaid = staff.staffPayments
     .filter((p) => p.type === "SALARY")
     .reduce((s, p) => s + p.amount, 0);
-  const presentDays = staff.attendance.filter((a) => a.status === "PRESENT").length;
+
+  // Month-wise attendance grid
+  const [yStr, mStr] = month.split("-");
+  const yearN = Number(yStr);
+  const monthN = Number(mStr); // 1-12
+  const daysInMonth = new Date(yearN, monthN, 0).getDate();
+  const attByDay = new Map<number, string>();
+  for (const a of staff.attendance) {
+    const d = new Date(a.date);
+    if (d.getFullYear() === yearN && d.getMonth() + 1 === monthN) {
+      attByDay.set(d.getDate(), a.status);
+    }
+  }
+  const presentDays = [...attByDay.values()].filter((s) => s === "PRESENT" || s === "HALF").length;
+  const statusColor: Record<string, string> = {
+    PRESENT: "bg-emerald-500/30 text-emerald-300 border-emerald-500/40",
+    ABSENT: "bg-rose-500/25 text-rose-300 border-rose-500/40",
+    HALF: "bg-amber-500/25 text-amber-200 border-amber-500/40",
+    LEAVE: "bg-sky-500/25 text-sky-200 border-sky-500/40",
+  };
 
   return (
     <div className="space-y-6">
@@ -135,10 +158,18 @@ export function HrStaffDetail({ staffId }: { staffId: string }) {
       {msg && <p className="text-sm text-emerald-400">{msg}</p>}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
-          <h2 className="text-sm font-bold">Attendance (precise date)</h2>
+        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3 lg:col-span-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-bold">Month-wise attendance</h2>
+            <input
+              className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs text-white"
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+            />
+          </div>
           <label className="block text-[11px] font-bold text-slate-400">
-            Date
+            Mark date
             <input className={field} type="date" value={attDate} onChange={(e) => setAttDate(e.target.value)} />
           </label>
           <div className="flex flex-wrap gap-2">
@@ -153,30 +184,72 @@ export function HrStaffDetail({ staffId }: { staffId: string }) {
               </button>
             ))}
           </div>
-          <div className="max-h-80 overflow-y-auto rounded-xl border border-white/5">
+
+          {/* Calendar grid for selected month */}
+          <div className="grid grid-cols-7 gap-1.5">
+            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+              <div key={d} className="text-center text-[10px] font-bold text-slate-500 py-1">
+                {d}
+              </div>
+            ))}
+            {Array.from({ length: new Date(yearN, monthN - 1, 1).getDay() }).map((_, i) => (
+              <div key={`pad-${i}`} />
+            ))}
+            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+              const st = attByDay.get(day);
+              const isToday =
+                day === new Date().getDate() &&
+                monthN === new Date().getMonth() + 1 &&
+                yearN === new Date().getFullYear();
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  title={st || "Not marked"}
+                  onClick={() => {
+                    const ds = `${yearN}-${String(monthN).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                    setAttDate(ds);
+                  }}
+                  className={`min-h-[2.5rem] rounded-lg border p-1 text-center transition ${
+                    st
+                      ? statusColor[st] || "border-white/10"
+                      : "border-white/10 bg-black/20 text-slate-500 hover:border-white/25"
+                  } ${isToday ? "ring-1 ring-violet-400/60" : ""}`}
+                >
+                  <div className="text-[11px] font-bold">{day}</div>
+                  {st && <div className="text-[8px] font-semibold leading-tight">{st.slice(0, 3)}</div>}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap gap-2 text-[10px] text-slate-500">
+            <span className="text-emerald-400">PRE = Present</span>
+            <span className="text-rose-300">ABS = Absent</span>
+            <span className="text-amber-200">HAL = Half</span>
+            <span className="text-sky-200">LEA = Leave</span>
+            <span className="ml-auto font-bold text-slate-300">This month present-ish: {presentDays}</span>
+          </div>
+
+          <div className="max-h-48 overflow-y-auto rounded-xl border border-white/5">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-slate-900 text-slate-500">
                 <tr>
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Note</th>
                 </tr>
               </thead>
               <tbody>
-                {staff.attendance.map((a) => (
-                  <tr key={a.id} className="border-t border-white/5">
-                    <td className="px-3 py-2">{new Date(a.date).toLocaleDateString("en-IN")}</td>
-                    <td className="px-3 py-2 font-bold text-emerald-400">{a.status}</td>
-                    <td className="px-3 py-2 text-slate-500">{a.notes || "—"}</td>
-                  </tr>
-                ))}
-                {staff.attendance.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="px-3 py-6 text-center text-slate-600">
-                      No attendance yet
-                    </td>
-                  </tr>
-                )}
+                {staff.attendance
+                  .filter((a) => {
+                    const d = new Date(a.date);
+                    return d.getFullYear() === yearN && d.getMonth() + 1 === monthN;
+                  })
+                  .map((a) => (
+                    <tr key={a.id} className="border-t border-white/5">
+                      <td className="px-3 py-2">{new Date(a.date).toLocaleDateString("en-IN")}</td>
+                      <td className="px-3 py-2 font-bold text-emerald-400">{a.status}</td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
