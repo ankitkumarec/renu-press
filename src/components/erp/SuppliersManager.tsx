@@ -81,14 +81,15 @@ export function SuppliersManager() {
             ))}
           </select>
           <select className={field} value={ledger.type} onChange={(e) => setLedger({ ...ledger, type: e.target.value })}>
-            <option value="PURCHASE">Purchase (maal aaya / due +)</option>
+            <option value="PURCHASE">Maal aaya (purchase → PO bhi banega)</option>
             <option value="PAYMENT">Payment (paisa diya / due −)</option>
           </select>
           <input className={field} type="number" placeholder="Amount ₹" required value={ledger.amount || ""} onChange={(e) => setLedger({ ...ledger, amount: Number(e.target.value) })} />
           <select className={field} value={ledger.method} onChange={(e) => setLedger({ ...ledger, method: e.target.value })}>
-            <option value="CASH">Cash</option>
-            <option value="ONLINE">Online</option>
-            <option value="UPI">UPI</option>
+            <option value="CREDIT">Credit / due (maal liya, abhi cash nahi)</option>
+            <option value="CASH">Cash paid now</option>
+            <option value="ONLINE">Online paid now</option>
+            <option value="UPI">UPI paid now</option>
           </select>
           <input className={field} placeholder="Note" value={ledger.note} onChange={(e) => setLedger({ ...ledger, note: e.target.value })} />
           <button type="submit" className="w-full rounded-full border border-white/15 py-2.5 text-sm font-bold">

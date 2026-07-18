@@ -23,6 +23,7 @@ export function OrdersBoard() {
   const [days, setDays] = useState(7);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,6 +39,20 @@ export function OrdersBoard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const filtered = orders.filter((o) => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return true;
+    const num = o.orderNumber.toLowerCase();
+    const last4 = o.orderNumber.replace(/\D/g, "").slice(-4);
+    return (
+      num.includes(needle) ||
+      last4.includes(needle.replace(/\D/g, "")) ||
+      o.customer.name.toLowerCase().includes(needle) ||
+      (o.customerPhone || "").includes(needle) ||
+      (o.billNo || "").toLowerCase().includes(needle)
+    );
+  });
 
   async function markPaid(id: string, total: number) {
     await fetch("/api/erp/orders", {
@@ -92,6 +107,12 @@ export function OrdersBoard() {
             {d === 0 ? "All" : `Last ${d} days`}
           </button>
         ))}
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search last 4 digits / name / phone…"
+          className="ml-auto min-w-[200px] flex-1 rounded-full border border-white/10 bg-black/30 px-4 py-1.5 text-xs text-white outline-none focus:border-violet-500/50 sm:max-w-xs"
+        />
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-white/10">
@@ -115,7 +136,7 @@ export function OrdersBoard() {
                 </td>
               </tr>
             ) : (
-              orders.map((o) => {
+              filtered.map((o) => {
                 const phone = o.customerPhone || o.customer.phone;
                 return (
                   <tr key={o.id} className="border-t border-white/5 hover:bg-white/[0.02]">
@@ -177,10 +198,12 @@ export function OrdersBoard() {
                 );
               })
             )}
-            {!loading && orders.length === 0 ? (
+            {!loading && filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
-                  No orders in this period — bill se “Order me” dabao.
+                  {orders.length === 0
+                    ? "No orders in this period — bill se “Order me” dabao."
+                    : "Search se koi order nahi mila."}
                 </td>
               </tr>
             ) : null}

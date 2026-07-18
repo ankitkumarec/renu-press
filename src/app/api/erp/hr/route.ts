@@ -14,9 +14,9 @@ export async function GET() {
     where: { role: { in: ["EMPLOYEE", "DESIGNER", "MANAGER", "ADMIN"] }, isActive: true },
     include: {
       employeeProfile: true,
-      attendance: { orderBy: { date: "desc" }, take: 14 },
-      staffPayments: { orderBy: { paidAt: "desc" }, take: 20 },
-      salarySlips: { orderBy: { createdAt: "desc" }, take: 6 },
+      attendance: { orderBy: { date: "desc" }, take: 120 },
+      staffPayments: { orderBy: { paidAt: "desc" }, take: 100 },
+      salarySlips: { orderBy: { createdAt: "desc" }, take: 24 },
     },
   });
   return NextResponse.json({ ok: true, staff });

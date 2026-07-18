@@ -63,7 +63,24 @@ export async function PATCH(req: Request) {
   }
   const body = ledgerSchema.parse(await req.json());
   const entry = await prisma.supplierLedger.create({ data: body });
-  return NextResponse.json({ ok: true, entry });
+
+  // Maal liya (PURCHASE) → Purchase Orders list me bhi dikhe
+  let po = null;
+  if (body.type === "PURCHASE") {
+    const poNumber = `PO-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+    po = await prisma.purchaseOrder.create({
+      data: {
+        poNumber,
+        supplierId: body.supplierId,
+        total: body.amount,
+        status: body.method === "CREDIT" || body.method === "DUE" ? "RECEIVED_UNPAID" : "RECEIVED",
+        notes: body.note || `Ledger purchase · ${body.method}`,
+        receivedAt: new Date(),
+      },
+    });
+  }
+
+  return NextResponse.json({ ok: true, entry, po });
 }
 
 export async function DELETE(req: Request) {

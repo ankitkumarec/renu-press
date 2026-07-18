@@ -67,6 +67,8 @@ export function BillGenerator({
   const [note, setNote] = useState("Thank you for choosing RENU PRESS.");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [gstPct, setGstPct] = useState(18);
+  /** string so empty field shows blank / 0, not sticky "01" */
+  const [gstInput, setGstInput] = useState("18");
   const [discountType, setDiscountType] = useState<"FLAT" | "PERCENT">("FLAT");
   const [discountVal, setDiscountVal] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
@@ -134,18 +136,23 @@ export function BillGenerator({
     ctx.fillText(`Date: ${new Date().toLocaleDateString("en-IN")}`, 36, 200);
     if (phone) ctx.fillText(`Shop: ${phone}`, 400, 178);
 
-    ctx.fillStyle = "#f1f5f9";
-    ctx.fillRect(36, 220, w - 72, 70);
+    // Larger Bill To block so name + phone don't look cramped
+    ctx.fillStyle = "#eef2ff";
+    ctx.fillRect(36, 218, w - 72, 100);
+    ctx.strokeStyle = "#c7d2fe";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(36, 218, w - 72, 100);
+    ctx.fillStyle = "#4338ca";
+    ctx.font = "bold 12px Segoe UI, Arial";
+    ctx.fillText("BILL TO", 52, 242);
     ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 13px Segoe UI, Arial";
-    ctx.fillText("Bill To", 48, 244);
-    ctx.font = "16px Segoe UI, Arial";
-    ctx.fillText(customerName || "Customer", 48, 268);
-    ctx.font = "13px Segoe UI, Arial";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText(`Phone/WA: ${whatsapp || "—"}`, 48, 288);
+    ctx.font = "bold 20px Segoe UI, Arial";
+    ctx.fillText((customerName || "Customer").slice(0, 40), 52, 272);
+    ctx.font = "15px Segoe UI, Arial";
+    ctx.fillStyle = "#334155";
+    ctx.fillText(`Phone / WhatsApp: ${whatsapp || "—"}`, 52, 298);
 
-    let y = 320;
+    let y = 340;
     ctx.fillStyle = "#0f172a";
     ctx.fillRect(36, y, w - 72, 36);
     ctx.fillStyle = "#fff";
@@ -390,8 +397,28 @@ export function BillGenerator({
             <input
               className={field}
               type="number"
-              value={gstPct}
-              onChange={(e) => setGstPct(Number(e.target.value) || 0)}
+              min={0}
+              step={1}
+              value={gstInput}
+              onChange={(e) => {
+                const v = e.target.value;
+                // allow empty while typing; avoid forcing "01"
+                if (v === "" || v === "-") {
+                  setGstInput("");
+                  setGstPct(0);
+                  return;
+                }
+                const n = Number(v);
+                if (Number.isNaN(n)) return;
+                setGstInput(String(n));
+                setGstPct(Math.max(0, n));
+              }}
+              onBlur={() => {
+                if (gstInput === "") {
+                  setGstInput("0");
+                  setGstPct(0);
+                }
+              }}
             />
           </label>
         </div>

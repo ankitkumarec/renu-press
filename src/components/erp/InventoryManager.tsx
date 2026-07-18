@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Plus } from "lucide-react";
+import { Package, Plus, Trash2 } from "lucide-react";
 
 type Item = {
   id: string;
@@ -77,6 +77,18 @@ export function InventoryManager() {
     }
     setMsg(`Stock updated: ${delta > 0 ? "+" : ""}${delta}`);
     setDelta(0);
+    void load();
+  }
+
+  async function deleteItem(id: string, name: string) {
+    if (!confirm(`Delete item "${name}"?`)) return;
+    const res = await fetch(`/api/erp/inventory?id=${id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!data.ok) {
+      setMsg(data.message || "Delete fail");
+      return;
+    }
+    setMsg(`Deleted: ${name}`);
     void load();
   }
 
@@ -173,6 +185,13 @@ export function InventoryManager() {
                   <div className="text-[10px]">{i.supplier?.name || "—"}</div>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => void deleteItem(i.id, i.name)}
+                className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-rose-400 hover:text-rose-300"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete item
+              </button>
             </article>
           );
         })}
