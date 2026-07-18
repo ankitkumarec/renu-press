@@ -33,6 +33,25 @@ export async function GET() {
   return NextResponse.json({ ok: true, expenses });
 }
 
+export async function DELETE(req: Request) {
+  const session = await getSession();
+  if (!session || !isErpRole(session.role)) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id) return NextResponse.json({ ok: false, message: "id required" }, { status: 400 });
+  await prisma.expense.delete({ where: { id } });
+  await prisma.auditLog.create({
+    data: {
+      userId: session.id,
+      action: "EXPENSE_DELETE",
+      entity: "Expense",
+      meta: JSON.stringify({ id }),
+    },
+  });
+  return NextResponse.json({ ok: true });
+}
+
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session || !isErpRole(session.role)) {

@@ -1,9 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { FileImage, Download, Plus, Trash2, ImagePlus, Loader2, CheckCircle2 } from "lucide-react";
+import {
+  FileImage,
+  Download,
+  Plus,
+  Trash2,
+  ImagePlus,
+  Loader2,
+  CheckCircle2,
+  Printer,
+  ShoppingCart,
+} from "lucide-react";
 
-type Line = { name: string; qty: number; rate: number };
+type Line = { name: string; qty: number; rate: number; inventoryId?: string };
+type StockItem = { id: string; name: string; quantity: number; unit: string };
 
 function nextBillNo() {
   const d = new Date();
@@ -48,6 +59,7 @@ export function BillGenerator({
   phone?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const printRef = useRef<HTMLDivElement>(null);
   const [billNo, setBillNo] = useState(nextBillNo);
   const [customerName, setCustomerName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -55,20 +67,41 @@ export function BillGenerator({
   const [note, setNote] = useState("Thank you for choosing RENU PRESS.");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [gstPct, setGstPct] = useState(18);
+  const [discountType, setDiscountType] = useState<"FLAT" | "PERCENT">("FLAT");
+  const [discountVal, setDiscountVal] = useState(0);
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [waBusy, setWaBusy] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
   const [waStatus, setWaStatus] = useState<string | null>(null);
   const [lastImageUrl, setLastImageUrl] = useState<string | null>(null);
   const [sentOk, setSentOk] = useState(false);
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
+
+  useEffect(() => {
+    fetch("/api/erp/inventory")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.items) setStockItems(d.items.map((i: StockItem & { id: string }) => i));
+      })
+      .catch(() => {});
+  }, []);
 
   const subtotal = lines.reduce((s, l) => s + l.qty * l.rate, 0);
-  const gst = Math.round((subtotal * gstPct) / 100);
-  const total = subtotal + gst;
+  const discountAmt =
+    discountType === "PERCENT"
+      ? Math.round((subtotal * Math.min(100, Math.max(0, discountVal))) / 100)
+      : Math.min(subtotal, Math.max(0, discountVal));
+  const afterDisc = Math.max(0, subtotal - discountAmt);
+  const gst = Math.round((afterDisc * gstPct) / 100);
+  const total = afterDisc + gst;
+  const due = Math.max(0, total - Math.min(total, paidAmount));
 
   function drawBill() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const w = 720;
-    const h = 920 + Math.max(0, lines.length - 3) * 36;
+    const h = 1000 + Math.max(0, lines.length - 3) * 36;
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d");
@@ -110,7 +143,7 @@ export function BillGenerator({
     ctx.fillText(customerName || "Customer", 48, 268);
     ctx.font = "13px Segoe UI, Arial";
     ctx.fillStyle = "#64748b";
-    ctx.fillText(`WhatsApp: ${whatsapp || "—"}`, 48, 288);
+    ctx.fillText(`Phone/WA: ${whatsapp || "—"}`, 48, 288);
 
     let y = 320;
     ctx.fillStyle = "#0f172a";
@@ -143,16 +176,31 @@ export function BillGenerator({
     ctx.font = "14px Segoe UI, Arial";
     ctx.fillText("Subtotal", 480, y);
     ctx.fillText(`₹${subtotal.toLocaleString("en-IN")}`, 600, y);
-    y += 26;
+    y += 22;
+    if (discountAmt > 0) {
+      ctx.fillText(
+        `Discount (${discountType === "PERCENT" ? discountVal + "%" : "₹"})`,
+        480,
+        y,
+      );
+      ctx.fillText(`-₹${discountAmt.toLocaleString("en-IN")}`, 600, y);
+      y += 22;
+    }
     ctx.fillText(`GST (${gstPct}%)`, 480, y);
     ctx.fillText(`₹${gst.toLocaleString("en-IN")}`, 600, y);
-    y += 32;
+    y += 28;
     ctx.fillStyle = "#0f172a";
     ctx.font = "bold 18px Segoe UI, Arial";
     ctx.fillText("TOTAL", 480, y);
     ctx.fillText(`₹${total.toLocaleString("en-IN")}`, 600, y);
+    y += 26;
+    ctx.font = "13px Segoe UI, Arial";
+    ctx.fillStyle = "#475569";
+    ctx.fillText(`Paid (${paymentMethod}): ₹${Math.min(paidAmount, total).toLocaleString("en-IN")}`, 480, y);
+    y += 20;
+    ctx.fillText(`Due: ₹${due.toLocaleString("en-IN")}`, 480, y);
 
-    y += 50;
+    y += 40;
     ctx.fillStyle = "#64748b";
     ctx.font = "12px Segoe UI, Arial";
     const noteLines = (note || "").match(/.{1,70}/g) || [];
@@ -169,7 +217,21 @@ export function BillGenerator({
   useEffect(() => {
     drawBill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [billNo, customerName, whatsapp, lines, note, gstPct, businessName, address, phone]);
+  }, [
+    billNo,
+    customerName,
+    whatsapp,
+    lines,
+    note,
+    gstPct,
+    discountType,
+    discountVal,
+    paidAmount,
+    paymentMethod,
+    businessName,
+    address,
+    phone,
+  ]);
 
   function updateLine(i: number, patch: Partial<Line>) {
     setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -185,36 +247,86 @@ export function BillGenerator({
     }, "image/png");
   }
 
-  /**
-   * Real image send path:
-   * 1) PNG server pe save → public URL
-   * 2) WhatsApp Cloud API se image message (agar keys hain) — true auto-send
-   * 3) Warna Web Share se sirf PNG file (WhatsApp choose)
-   */
+  function printBill() {
+    drawBill();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL("image/png");
+    const w = window.open("", "_blank", "width=800,height=1000");
+    if (!w) {
+      alert("Popup blocked — allow popups for print");
+      return;
+    }
+    w.document.write(`<!DOCTYPE html><html><head><title>${billNo}</title>
+      <style>body{margin:0;display:grid;place-items:center;background:#fff}
+      img{max-width:100%;height:auto}@media print{body{margin:0}}</style></head>
+      <body><img src="${dataUrl}" onload="window.print();window.onafterprint=()=>window.close()"/></body></html>`);
+    w.document.close();
+  }
+
+  async function saveAsOrder() {
+    if (!customerName.trim()) {
+      alert("Customer name daalo");
+      return;
+    }
+    setSaveBusy(true);
+    try {
+      const stockDeductions = lines
+        .filter((l) => l.inventoryId)
+        .map((l) => ({ itemId: l.inventoryId!, qty: l.qty }));
+      const res = await fetch("/api/erp/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName,
+          customerPhone: whatsapp,
+          serviceName: lines.map((l) => l.name).join(", ").slice(0, 120),
+          quantity: lines.reduce((s, l) => s + l.qty, 0),
+          subtotal,
+          tax: gst,
+          total,
+          discount: discountAmt,
+          discountType,
+          gstPct,
+          paidAmount: Math.min(paidAmount, total),
+          paymentMethod,
+          billNo,
+          itemsJson: JSON.stringify(lines),
+          notes: note,
+          status: "CONFIRMED",
+          stockDeductions,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.message || "Order save fail");
+      setWaStatus(`✓ Order saved: ${data.order.orderNumber} · Stock updated where linked`);
+      setSentOk(true);
+      alert(`Order ban gaya: ${data.order.orderNumber}\nOrders page pe check karo.`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Save fail");
+    } finally {
+      setSaveBusy(false);
+    }
+  }
+
   async function openWhatsApp() {
     const digits = whatsapp.replace(/\D/g, "");
     if (digits.length < 10) {
       alert("WhatsApp number sahi daalo (10 digit)");
       return;
     }
-
     setWaBusy(true);
     setWaStatus(null);
     setSentOk(false);
     setLastImageUrl(null);
-
     try {
       drawBill();
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-
       const canvas = canvasRef.current;
       if (!canvas) throw new Error("Bill preview ready nahi");
-
       const fileName = `${billNo}.png`;
       const file = await canvasToPngFile(canvas, fileName);
       const dataUrl = canvas.toDataURL("image/png");
-
-      // Server: store + optional Cloud API auto image send
       const res = await fetch("/api/erp/bills/whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -233,52 +345,20 @@ export function BillGenerator({
         message?: string;
         cloudApiError?: string;
       };
-
       setLastImageUrl(data.imageUrl || null);
-
-      // —— SUCCESS: Cloud API ne IMAGE bhej di (browser me WA page nahi khulega) ——
       if (res.ok && data.ok && data.mode === "cloud_api") {
         setSentOk(true);
-        setWaStatus(
-          data.message ||
-            "✓ Bill IMAGE WhatsApp pe chali gayi. Apne phone pe +1 555… / business chat check karo — text nahi, PNG image.",
-        );
+        setWaStatus(data.message || "✓ Bill IMAGE WhatsApp pe chali gayi.");
         return;
       }
-
-      // API fail — clear error, NEVER open api.whatsapp.com text page
       const errMsg =
         data.message ||
         data.cloudApiError ||
-        (res.status === 401 ? "ERP login expire — dubara login karo" : "WhatsApp image send fail");
-
+        (res.status === 401 ? "ERP login expire" : "WhatsApp image send fail");
       setSentOk(false);
       setWaStatus(`✗ ${errMsg}`);
-
-      // Optional: share sheet only if user wants (no automatic browser WA redirect)
-      const nav = navigator as Navigator & {
-        canShare?: (d: ShareData) => boolean;
-        share?: (d: ShareData) => Promise<void>;
-      };
-      if (typeof nav.canShare === "function" && nav.canShare({ files: [file] }) && nav.share) {
-        const tryShare = window.confirm(
-          `Cloud API se image nahi gayi:\n${errMsg}\n\nShare sheet se WhatsApp try karein?`,
-        );
-        if (tryShare) {
-          try {
-            await nav.share({ files: [file] });
-            setSentOk(true);
-            setWaStatus("✓ Share se PNG bheji.");
-            return;
-          } catch {
-            /* cancel */
-          }
-        }
-      }
-
       alert(`WhatsApp image fail:\n${errMsg}`);
     } catch (e) {
-      console.error(e);
       setWaStatus(e instanceof Error ? e.message : "Fail");
       alert(e instanceof Error ? e.message : "WhatsApp fail");
     } finally {
@@ -292,10 +372,10 @@ export function BillGenerator({
   }
 
   const field =
-    "mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50";
+    "mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500/50";
 
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="grid gap-6 xl:grid-cols-2" ref={printRef}>
       <form onSubmit={onSubmit} className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:p-5">
         <h2 className="flex items-center gap-2 text-sm font-bold">
           <FileImage className="h-4 w-4 text-violet-400" /> Bill generator
@@ -320,19 +400,66 @@ export function BillGenerator({
           <input className={field} value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
         </label>
         <label className="block text-[11px] font-bold text-slate-400">
-          Customer WhatsApp (jis number pe image jayegi)
+          Customer phone / WhatsApp
           <input
             className={field}
             value={whatsapp}
             onChange={(e) => setWhatsapp(e.target.value)}
-            placeholder="9876543210"
+            placeholder="7004968193"
             required
           />
         </label>
 
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-[11px] font-bold text-slate-400">
+            Discount type
+            <select
+              className={field}
+              value={discountType}
+              onChange={(e) => setDiscountType(e.target.value as "FLAT" | "PERCENT")}
+            >
+              <option value="FLAT">₹ Rupees</option>
+              <option value="PERCENT">% Percent</option>
+            </select>
+          </label>
+          <label className="block text-[11px] font-bold text-slate-400">
+            Discount {discountType === "PERCENT" ? "%" : "₹"}
+            <input
+              className={field}
+              type="number"
+              min={0}
+              value={discountVal}
+              onChange={(e) => setDiscountVal(Number(e.target.value) || 0)}
+            />
+          </label>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-[11px] font-bold text-slate-400">
+            Payment mode
+            <select className={field} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+              <option value="CASH">Cash</option>
+              <option value="ONLINE">Online</option>
+              <option value="UPI">UPI</option>
+              <option value="PARTIAL">Partial</option>
+              <option value="CARD">Card</option>
+            </select>
+          </label>
+          <label className="block text-[11px] font-bold text-slate-400">
+            Paid now ₹
+            <input
+              className={field}
+              type="number"
+              min={0}
+              value={paidAmount}
+              onChange={(e) => setPaidAmount(Number(e.target.value) || 0)}
+            />
+          </label>
+        </div>
+
         <div className="space-y-2">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
-            <span>Items</span>
+            <span>Items (stock link optional → bill pe auto minus)</span>
             <button
               type="button"
               className="inline-flex items-center gap-1 text-violet-300"
@@ -342,32 +469,55 @@ export function BillGenerator({
             </button>
           </div>
           {lines.map((line, i) => (
-            <div key={i} className="grid grid-cols-12 gap-1.5">
-              <input
-                className={`${field} col-span-6`}
-                value={line.name}
-                onChange={(e) => updateLine(i, { name: e.target.value })}
-              />
-              <input
-                className={`${field} col-span-2`}
-                type="number"
-                value={line.qty}
-                onChange={(e) => updateLine(i, { qty: Number(e.target.value) || 0 })}
-              />
-              <input
-                className={`${field} col-span-3`}
-                type="number"
-                value={line.rate}
-                onChange={(e) => updateLine(i, { rate: Number(e.target.value) || 0 })}
-              />
-              <button
-                type="button"
-                className="col-span-1 grid place-items-center text-rose-400"
-                onClick={() => setLines((l) => l.filter((_, idx) => idx !== i))}
-                disabled={lines.length === 1}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+            <div key={i} className="space-y-1 rounded-xl border border-white/5 p-2">
+              <div className="grid grid-cols-12 gap-1.5">
+                <input
+                  className={`${field} col-span-6 !mt-0`}
+                  value={line.name}
+                  onChange={(e) => updateLine(i, { name: e.target.value })}
+                />
+                <input
+                  className={`${field} col-span-2 !mt-0`}
+                  type="number"
+                  value={line.qty}
+                  onChange={(e) => updateLine(i, { qty: Number(e.target.value) || 0 })}
+                />
+                <input
+                  className={`${field} col-span-3 !mt-0`}
+                  type="number"
+                  value={line.rate}
+                  onChange={(e) => updateLine(i, { rate: Number(e.target.value) || 0 })}
+                />
+                <button
+                  type="button"
+                  className="col-span-1 grid place-items-center text-rose-400"
+                  onClick={() => setLines((l) => l.filter((_, idx) => idx !== i))}
+                  disabled={lines.length === 1}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              {stockItems.length > 0 && (
+                <select
+                  className={`${field} !mt-0 text-xs`}
+                  value={line.inventoryId || ""}
+                  onChange={(e) => {
+                    const id = e.target.value || undefined;
+                    const it = stockItems.find((s) => s.id === id);
+                    updateLine(i, {
+                      inventoryId: id,
+                      name: it ? it.name : line.name,
+                    });
+                  }}
+                >
+                  <option value="">— Stock se link (optional) —</option>
+                  {stockItems.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.quantity} {s.unit})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           ))}
         </div>
@@ -377,31 +527,57 @@ export function BillGenerator({
           <textarea className={field} rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
 
-        <div className="rounded-xl bg-white/5 px-3 py-2 text-sm">
-          Total: <span className="font-black text-orange-300">₹{total.toLocaleString("en-IN")}</span>
+        <div className="rounded-xl bg-white/5 px-3 py-2 text-sm space-y-1">
+          <div>
+            Subtotal: ₹{subtotal.toLocaleString("en-IN")}
+            {discountAmt > 0 ? ` − Disc ₹${discountAmt.toLocaleString("en-IN")}` : ""}
+          </div>
+          <div>
+            GST ({gstPct}%): ₹{gst.toLocaleString("en-IN")}
+          </div>
+          <div>
+            Total: <span className="font-black text-orange-300">₹{total.toLocaleString("en-IN")}</span>
+          </div>
+          <div className="text-xs text-slate-400">
+            Paid ₹{Math.min(paidAmount, total).toLocaleString("en-IN")} ({paymentMethod}) · Due{" "}
+            <span className="text-rose-300 font-bold">₹{due.toLocaleString("en-IN")}</span>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <button
             type="button"
             onClick={downloadPng}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/15 py-3 text-sm font-bold"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 py-2.5 text-xs font-bold"
           >
-            <Download className="h-4 w-4" /> PNG save
+            <Download className="h-3.5 w-3.5" /> PNG
+          </button>
+          <button
+            type="button"
+            onClick={printBill}
+            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-200"
+          >
+            <Printer className="h-3.5 w-3.5" /> Print
+          </button>
+          <button
+            type="button"
+            disabled={saveBusy}
+            onClick={() => void saveAsOrder()}
+            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-violet-500/40 bg-violet-500/15 py-2.5 text-xs font-bold text-violet-100 disabled:opacity-60"
+          >
+            {saveBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShoppingCart className="h-3.5 w-3.5" />}
+            Order me
           </button>
           <button
             type="button"
             disabled={waBusy}
             onClick={() => void openWhatsApp()}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] py-3 text-sm font-bold text-white disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#25D366] py-2.5 text-xs font-bold text-white disabled:opacity-60"
           >
-            {waBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-            v5 · Cloud se PNG image bhejo
+            {waBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+            WA
           </button>
         </div>
-        <p className="text-center text-[10px] font-bold text-emerald-400/90">
-          Agar ab bhi api.whatsapp.com page khule → Ctrl+Shift+R (purana cache). Naya button text: &quot;v5 · Cloud se PNG&quot;
-        </p>
 
         {waStatus ? (
           <div
@@ -414,7 +590,6 @@ export function BillGenerator({
             {sentOk ? <CheckCircle2 className="mb-1 inline h-4 w-4" /> : null} {waStatus}
             {lastImageUrl ? (
               <div className="mt-2 break-all text-[10px] text-slate-400">
-                Bill image link:{" "}
                 <a href={lastImageUrl} target="_blank" rel="noreferrer" className="text-cyan-300 underline">
                   open PNG
                 </a>
@@ -422,52 +597,22 @@ export function BillGenerator({
             ) : null}
           </div>
         ) : null}
-
-        <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] leading-relaxed text-slate-400">
-          <p className="font-bold text-slate-300">Image WhatsApp pe kaise jayegi?</p>
-          <ol className="mt-1 list-decimal space-y-1 pl-4">
-            <li>
-              <strong className="text-emerald-300">Best (auto):</strong> Vercel pe{" "}
-              <code className="text-violet-300">WHATSAPP_ACCESS_TOKEN</code> +{" "}
-              <code className="text-violet-300">WHATSAPP_PHONE_NUMBER_ID</code> set karo → image seedha customer pe.
-            </li>
-            <li>
-              <strong className="text-cyan-300">Phone:</strong> Share list me WhatsApp choose → sirf PNG.
-            </li>
-            <li>
-              <strong className="text-orange-300">PC + WhatsApp Web:</strong> right side bill image ko{" "}
-              <em>drag</em> karke chat box pe <em>drop</em> karo — image chat me aa jayegi (download nahi).
-            </li>
-          </ol>
-        </div>
       </form>
 
       <div className="rounded-2xl border border-white/10 bg-white p-3 shadow-xl">
-        <p className="mb-2 text-xs font-bold text-slate-600">
-          Bill PNG — WhatsApp Web pe <span className="text-emerald-600">drag & drop</span> kar sakte ho
-        </p>
+        <p className="mb-2 text-xs font-bold text-slate-600">Bill preview · Print / PNG / WA / Order</p>
         <canvas ref={canvasRef} className="hidden" />
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={previewUrl}
-            alt="Bill preview — drag to WhatsApp"
+            alt="Bill preview"
             draggable
-            title="Is image ko WhatsApp Web chat pe drag karke chhodo"
-            className="w-full cursor-grab rounded-lg border-2 border-dashed border-emerald-400/80 active:cursor-grabbing"
-            onDragStart={(e) => {
-              // Help some browsers understand it's a file drag
-              e.dataTransfer.setData("text/uri-list", previewUrl);
-              e.dataTransfer.setData("text/plain", previewUrl);
-              e.dataTransfer.effectAllowed = "copy";
-            }}
+            className="w-full rounded-lg border-2 border-dashed border-emerald-400/80"
           />
         ) : (
           <div className="grid h-64 place-items-center text-sm text-slate-400">Generating…</div>
         )}
-        <p className="mt-2 text-center text-[10px] text-slate-500">
-          Tip: WhatsApp Web (web.whatsapp.com) open rakho → ye image chat pe khinch ke chhodo → Send
-        </p>
       </div>
     </div>
   );

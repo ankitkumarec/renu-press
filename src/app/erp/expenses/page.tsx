@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
-import Link from "next/link";
 import { ExpenseForm } from "@/components/erp/ExpenseForm";
+import { ExpenseDeleteButton } from "@/components/erp/ExpenseDeleteButton";
 
 export default async function ErpExpensesPage() {
   const expenses = await prisma.expense.findMany({
@@ -42,6 +42,7 @@ export default async function ErpExpensesPage() {
                   <th className="px-4 py-2">Method</th>
                   <th className="px-4 py-2">Proof</th>
                   <th className="px-4 py-2 text-right">Amount</th>
+                  <th className="px-4 py-2"> </th>
                 </tr>
               </thead>
               <tbody>
@@ -67,11 +68,14 @@ export default async function ErpExpensesPage() {
                     <td className="px-4 py-3 text-right font-bold tabular-nums text-orange-300">
                       ₹{e.amount.toLocaleString("en-IN")}
                     </td>
+                    <td className="px-4 py-3">
+                      <ExpenseDeleteButton id={e.id} />
+                    </td>
                   </tr>
                 ))}
                 {expenses.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
                       No expenses yet — add one with proof.
                     </td>
                   </tr>

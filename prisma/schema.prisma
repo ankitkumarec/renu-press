@@ -36,6 +36,7 @@ model User {
   salarySlips     SalarySlip[]
   expensesCreated Expense[]          @relation("ExpenseCreator")
   crmNotes        CrmNote[]
+  staffPayments   StaffPayment[]
 }
 
 model CustomerProfile {
@@ -458,6 +459,19 @@ model Order {
   tax             Float         @default(0)
   total           Float         @default(0)
   advancePaid     Float         @default(0)
+  /// Phone on order for call / WhatsApp
+  customerPhone   String?
+  /// CASH | ONLINE | UPI | PARTIAL | CARD
+  paymentMethod   String        @default("CASH")
+  paidAmount      Float         @default(0)
+  dueAmount       Float         @default(0)
+  discount        Float         @default(0)
+  /// FLAT | PERCENT
+  discountType    String        @default("FLAT")
+  gstPct          Float         @default(18)
+  billNo          String?
+  /// JSON string of line items [{name,qty,rate}]
+  itemsJson       String?
   paymentStatus String @default("UNPAID")
   trackingCode    String?
   deliveryAddress String?
@@ -570,10 +584,40 @@ model Supplier {
   gst         String?
   address     String?
   notes       String?
+  /// What products they supply
+  products    String?
   createdAt   DateTime        @default(now())
   items       InventoryItem[]
   purchases   PurchaseOrder[]
   expenses    Expense[]
+  ledger      SupplierLedger[]
+}
+
+/// Supplier paid / purchase / due ledger
+model SupplierLedger {
+  id         String   @id @default(cuid())
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  /// PURCHASE | PAYMENT | ADJUST
+  type       String
+  amount     Float
+  method     String   @default("CASH")
+  note       String?
+  createdAt  DateTime @default(now())
+}
+
+/// Staff mid-month advance / salary payment entries
+model StaffPayment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// ADVANCE | SALARY | BONUS
+  type      String   @default("ADVANCE")
+  amount    Float
+  method    String   @default("CASH")
+  note      String?
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model PurchaseOrder {

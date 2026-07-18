@@ -42,6 +42,7 @@ const NAV = [
   { href: "/erp/reports", label: "Reports", icon: BarChart3 },
   { href: "/erp/documents", label: "Documents", icon: FileStack },
   { href: "/erp/leads", label: "Leads", icon: ClipboardList },
+  { href: "/erp/catalog", label: "Gifts & Images", icon: Package },
   { href: "/erp/settings", label: "Settings", icon: Settings },
 ];
 
